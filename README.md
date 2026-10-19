@@ -72,6 +72,8 @@ Windows 打包必须把 `DayFlow.Updater.*` 与 `DayFlow.Widget.*` 一起放到�
 
 完整说明见 [服务器部署](docs/服务器部署.md) 和 [更新机制](docs/更新机制.md)。默认端口 **8765**，客户端填写完整地址及端口。云端使用 HTTPS，显式填写局域网 IP 时可使用 HTTP。
 
+维护者使用官方 GitHub CLI 发布。Windows 已配置系统代理而 CLI 无法联网时，可用 `python tools/gh.py auth login --hostname github.com --web --git-protocol https`；包装脚本只让子进程沿用现有代理并开启 Git TLS 校验，不修改系统网络配置。
+
 ## 当前限制
 
 - 通知通过系统通知访问授权采集；应用隐藏的内容、未发到通知栏的聊天、历史聊天不能保证读取。Shizuku 增强尚未接入。
