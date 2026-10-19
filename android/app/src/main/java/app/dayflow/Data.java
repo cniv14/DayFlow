@@ -15,13 +15,17 @@ public final class Data extends SQLiteOpenHelper {
         if (instance == null) instance = new Data(c.getApplicationContext());
         return instance;
     }
-    private Data(Context c) { super(c, "dayflow.db", null, 1); setWriteAheadLoggingEnabled(true); }
+    private Data(Context c) { super(c, "dayflow.db", null, 2); setWriteAheadLoggingEnabled(true); }
     public void onCreate(SQLiteDatabase db) {
-        db.execSQL("CREATE TABLE records(id TEXT PRIMARY KEY,kind TEXT,title TEXT,start_at TEXT,deleted INTEGER,dirty INTEGER,version INTEGER DEFAULT 0,body TEXT)");
+        db.execSQL("CREATE TABLE records(id TEXT PRIMARY KEY,kind TEXT,title TEXT,start_at TEXT,deleted INTEGER,dirty INTEGER,version INTEGER DEFAULT 0,body TEXT,updated_at TEXT DEFAULT '',completed TEXT DEFAULT '',end_at TEXT DEFAULT '')");
         db.execSQL("CREATE INDEX agenda ON records(deleted,kind,start_at)");
         db.execSQL("CREATE TABLE seen(hash TEXT PRIMARY KEY,created INTEGER)");
     }
-    public void onUpgrade(SQLiteDatabase db,int oldV,int newV) { throw new IllegalStateException("Unsupported database upgrade"); }
+    public void onUpgrade(SQLiteDatabase db,int oldV,int newV) {
+        if(oldV<2){db.execSQL("ALTER TABLE records ADD COLUMN updated_at TEXT DEFAULT ''");db.execSQL("ALTER TABLE records ADD COLUMN completed TEXT DEFAULT ''");db.execSQL("ALTER TABLE records ADD COLUMN end_at TEXT DEFAULT ''");
+            try(Cursor c=db.rawQuery("SELECT id,body FROM records",null)){while(c.moveToNext())try{JSONObject r=new JSONObject(c.getString(1));ContentValues v=new ContentValues();v.put("updated_at",r.optString("updated_at"));v.put("completed",r.optString("completed"));v.put("end_at",endIndex(r));db.update("records",v,"id=?",new String[]{c.getString(0)});}catch(JSONException e){throw new IllegalStateException("Cannot migrate existing record",e);}}
+        }
+    }
     public static JSONObject make(String kind,String title) throws JSONException {
         return new JSONObject().put("id",UUID.randomUUID().toString()).put("kind",kind).put("title",title)
             .put("content","").put("start_at","").put("end_at","").put("time_hint","")
@@ -45,8 +49,10 @@ public final class Data extends SQLiteOpenHelper {
         ContentValues v=new ContentValues();v.put("id",r.getString("id"));v.put("kind",r.getString("kind"));
         v.put("title",r.getString("title"));v.put("start_at",r.optString("start_at"));v.put("deleted",r.optBoolean("deleted")?1:0);
         v.put("dirty",dirty?1:0);v.put("version",version);v.put("body",r.toString());
+        v.put("updated_at",r.optString("updated_at"));v.put("completed",r.optString("completed"));v.put("end_at",endIndex(r));
         getWritableDatabase().insertWithOnConflict("records",null,v,SQLiteDatabase.CONFLICT_REPLACE);
     }
+    private static String endIndex(JSONObject r){if(!r.optString("end_at").isEmpty())return r.optString("end_at");return r.optString("start_at").isEmpty()?"":LocalDateTime.parse(r.optString("start_at")).plusHours(1).toString();}
     private long version(String id) {
         try(Cursor c=getReadableDatabase().rawQuery("SELECT version FROM records WHERE id=?",new String[]{id})) {return c.moveToFirst()?c.getLong(0):0;}
     }
@@ -64,9 +70,17 @@ public final class Data extends SQLiteOpenHelper {
         JSONArray rows=new JSONArray();String sql="SELECT body FROM records WHERE deleted=0";
         String[] args=null;
         if(kind!=null){sql+=" AND kind=?";args=new String[]{kind};}
-        sql+=" ORDER BY CASE WHEN start_at='' THEN 1 ELSE 0 END,start_at,title LIMIT "+Math.min(500,limit);
+        sql+=("note".equals(kind)||"inbox".equals(kind)?" ORDER BY updated_at DESC":" ORDER BY CASE WHEN start_at='' THEN 1 ELSE 0 END,start_at,title")+" LIMIT "+Math.min(500,limit);
         try(Cursor c=getReadableDatabase().rawQuery(sql,args)){while(c.moveToNext())rows.put(new JSONObject(c.getString(0)));}
         return rows;
+    }
+    public synchronized JSONArray range(LocalDate from,LocalDate to,boolean courses)throws JSONException{
+        JSONArray result=new JSONArray();String sql="SELECT body FROM records WHERE deleted=0 AND completed='' AND start_at<? AND end_at>? AND "+(courses?"kind='course'":"kind IN ('task','event','course','project')")+" ORDER BY start_at LIMIT 500";
+        try(Cursor c=getReadableDatabase().rawQuery(sql,new String[]{to.atStartOfDay().toString(),from.atStartOfDay().toString()})){while(c.moveToNext())result.put(new JSONObject(c.getString(0)));}return result;
+    }
+    public synchronized JSONArray taskBoard(int mode)throws JSONException{JSONArray rows=new JSONArray();String clause=mode==2?"completed<>''":mode==1?"completed='' AND start_at=''":"completed=''";String sql="SELECT body FROM records WHERE deleted=0 AND kind IN ('task','event','course','project') AND "+clause+(mode==2?" ORDER BY updated_at DESC":" ORDER BY CASE WHEN start_at>='"+LocalDate.now()+"' THEN 0 WHEN start_at='' THEN 1 ELSE 2 END,start_at")+" LIMIT 150";try(Cursor c=getReadableDatabase().rawQuery(sql,null)){while(c.moveToNext())rows.put(new JSONObject(c.getString(0)));}return rows;}
+    public synchronized JSONArray undated()throws JSONException{
+        JSONArray result=new JSONArray();try(Cursor c=getReadableDatabase().rawQuery("SELECT body FROM records WHERE deleted=0 AND completed='' AND start_at='' AND kind IN ('task','event','project') ORDER BY updated_at DESC LIMIT 100",null)){while(c.moveToNext())result.put(new JSONObject(c.getString(0)));}return result;
     }
     public synchronized JSONArray pending() throws JSONException {
         JSONArray rows=new JSONArray();

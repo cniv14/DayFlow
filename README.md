@@ -8,7 +8,7 @@
 
 | Android | Windows | 可选服务端 |
 | --- | --- | --- |
-| 日程、待办、模糊时间、月历日期筛选 | 可置顶、拖动、缩放的挂件窗口 | 账号注册、登录、注销、设备标识 |
+| 原生日／周时间表、待办、模糊时间、日期选择 | 可置顶、拖动、缩放的挂件窗口 | 账号注册、登录、注销、设备标识 |
 | 文字与压缩图片笔记 | 任务与笔记编辑、完成、删除 | 密码 scrypt 哈希、可撤销的过期会话 |
 | QQ / 微信 / 邮件应用通知收集箱 | 文件合并与增量同步 | 按用户隔离的 SQLite 存储 |
 | 粘贴正文、手动调用文本／视觉 AI 提取多个事项 | 壁纸、透明度、背景模糊与轻量动效 | 版本比较与冲突返回 |
@@ -17,14 +17,16 @@
 | 前置事项实际完成后触发后续任务 | 更新保留本地用户数据 | 可发布签名更新清单与两端安装包 |
 | 通知提醒、系统日历／系统闹钟入口 | 本地 JSON 数据库 | 不要求 Redis、外部数据库或 AI 运行时 |
 | 桌面小组件、快捷设置磁贴、应用内边缘手势 | Windows 10/11，.NET 10 Desktop Runtime | Python 3.12+，标准库运行 |
-| Android 8.0+，Android 12+支持背景模糊 | | |
+| 原生深色主题，Android 12+动态强调色／背景模糊 | | |
 
 安装包及操作步骤见 [测试说明](docs/测试说明.md)。
+
+Android 0.2.0 的原生界面、表格日程、小组件及位置天气操作见 [新版使用说明](docs/Android-0.2.0.md)。Android 最低支持8.0；Windows 与服务端目前保留0.1.0。
 
 ## 项目结构
 
 ```text
-android/             原生 Java Android 应用，无第三方运行依赖
+android/             原生 Java / Material Components / AndroidX / SQLite
 windows/             WPF 挂件与独立更新辅助程序
 server/              Python / SQLite 同步与更新分发服务
 shared/              Windows 更新签名验证协议
@@ -98,8 +100,8 @@ dotnet run -c Release
 
 Android 自定义 instrumentation 测试运行真实 SQLite、导入解析和 Keystore。测试包是独立的开发产物，不随用户 APK 安装。`artifacts/` 中的截图、测试档案及本机测量不作为源码发布。
 
-本轮结果：15项服务端测试、13项 Android 设备检查、10项离线合并检查及4项更新协议检查通过；Android Lint 和两端编译通过。Android 11 模拟器的小数据量前台空闲 PSS 约45MB，此结果不代表所有机型和图片／AI处理峰值。通知采集、系统提醒的厂商兼容性以及跨版本安装需继续实机测试。
+0.1.0结果：15项服务端测试、13项 Android 设备检查、10项离线合并检查及4项更新协议检查通过；Android Lint 和两端编译通过。该版本 Android 11 模拟器小数据量前台空闲 PSS 约45MB，不能用于推断0.2.0或其他机型的内存。Android 0.2.0按用户要求只做编译，不运行测试，行为由用户实测。
 
 ## 许可证与依赖
 
-本项目代码采用 [MIT License](LICENSE)，尚未复制第三方应用源码。Android SDK、OpenJDK、.NET、Python、Caddy 与构建工具各自保留其原许可证；MIT 不替代这些许可证。天气数据来自 [Open-Meteo](https://open-meteo.com/)，API 的使用应遵守其条款与署名要求。AI 使用用户自行配置的服务。
+本项目代码采用 [MIT License](LICENSE)。Android UI 依赖的 Material Components 和 AndroidX 使用 Apache 2.0，详见 [第三方声明](THIRD_PARTY_NOTICES.md)。Android SDK、OpenJDK、.NET、Python、Caddy 与构建工具各自保留其原许可证；MIT 不替代这些许可证。天气来自 [Open-Meteo](https://open-meteo.com/)，AI 使用用户自行配置的服务。

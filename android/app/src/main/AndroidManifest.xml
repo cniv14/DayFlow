@@ -5,10 +5,11 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
-    <application android:label="日栖 DayFlow" android:theme="@android:style/Theme.Material.Light.NoActionBar"
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <application android:name=".DayFlowApp" android:label="日栖 DayFlow" android:theme="@style/Theme.DayFlow"
         android:icon="@drawable/ic_dayflow" android:allowBackup="false" android:supportsRtl="true"
         android:usesCleartextTraffic="true">
-        <activity android:name=".MainActivity" android:exported="true" android:windowSoftInputMode="adjustResize">
+        <activity android:name=".MainActivity" android:launchMode="singleTop" android:exported="true" android:windowSoftInputMode="adjustResize">
             <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
             <intent-filter><action android:name="android.intent.action.SEND" /><category android:name="android.intent.category.DEFAULT" /><data android:mimeType="text/plain" /></intent-filter>
         </activity>

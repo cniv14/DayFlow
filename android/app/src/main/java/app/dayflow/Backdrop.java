@@ -9,9 +9,10 @@ import android.view.View;
 public final class Backdrop extends View {
     private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF target=new RectF();
-    private Bitmap bitmap;private boolean active;private long start;
+    private Bitmap bitmap;private boolean active;private long start;private int surface,accent;
     public Backdrop(Context c){super(c);setLayerType(View.LAYER_TYPE_HARDWARE,null);}
     public void load(){
+        surface=Ui.surface(getContext());accent=Ui.primary(getContext());
         if(bitmap!=null){bitmap.recycle();bitmap=null;}
         java.io.File file=new java.io.File(getContext().getFilesDir(),"wallpaper.jpg");
         if(file.exists())bitmap=BitmapFactory.decodeFile(file.getAbsolutePath());
@@ -20,13 +21,12 @@ public final class Backdrop extends View {
         invalidate();
     }
     public void active(boolean value){active=value;start=SystemClock.uptimeMillis();if(value)invalidate();}
-    protected void onDraw(Canvas canvas){super.onDraw(canvas);int w=getWidth(),h=getHeight();canvas.drawColor(Color.rgb(229,238,229));
+    protected void onDraw(Canvas canvas){super.onDraw(canvas);int w=getWidth(),h=getHeight();canvas.drawColor(surface);
         if(bitmap!=null){paint.setShader(null);float scale=Math.max((float)w/bitmap.getWidth(),(float)h/bitmap.getHeight());float bw=bitmap.getWidth()*scale,bh=bitmap.getHeight()*scale;target.set((w-bw)/2,(h-bh)/2,(w+bw)/2,(h+bh)/2);canvas.drawBitmap(bitmap,null,target,paint);}
-        boolean moving=active&&getContext().getSharedPreferences("settings",0).getBoolean("motion",false)&&!((PowerManager)getContext().getSystemService(Context.POWER_SERVICE)).isPowerSaveMode();
+        boolean enabled=getContext().getSharedPreferences("settings",0).getBoolean("motion",false);if(bitmap!=null){paint.setColor(Color.argb(getContext().getSharedPreferences("settings",0).getInt("opacity",86)*255/100,Color.red(surface),Color.green(surface),Color.blue(surface)));canvas.drawRect(0,0,w,h,paint);}if(!enabled)return;
+        boolean moving=active&&!((PowerManager)getContext().getSystemService(Context.POWER_SERVICE)).isPowerSaveMode();
         float t=moving?(SystemClock.uptimeMillis()-start)/12000f:0;
-        paint.setColor(0x556CBFA8);canvas.drawCircle(w*(.18f+.12f*(float)Math.sin(t)),h*.25f,w*.7f,paint);
-        paint.setColor(0x55E6C47A);canvas.drawCircle(w*.95f,h*(.7f+.12f*(float)Math.cos(t)),w*.8f,paint);
-        paint.setColor(0x33FFFFFF);canvas.drawCircle(w*.5f,h*.5f,w*.6f,paint);
+        paint.setColor(Color.argb(18,Color.red(accent),Color.green(accent),Color.blue(accent)));canvas.drawCircle(w*(.18f+.12f*(float)Math.sin(t)),h*.25f,w*.7f,paint);canvas.drawCircle(w*.95f,h*(.7f+.12f*(float)Math.cos(t)),w*.8f,paint);
         if(moving)postInvalidateDelayed(33);
     }
     protected void onDetachedFromWindow(){active=false;super.onDetachedFromWindow();}
