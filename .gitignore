@@ -1,0 +1,15 @@
+.gradle/
+**/build/
+**/bin/
+**/obj/
+__pycache__/
+*.db*
+local.properties
+.env
+dist/
+.dotnet/
+.signing/
+.tools/
+artifacts/
+*.log
+server/updates/

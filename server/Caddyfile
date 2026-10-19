@@ -1,0 +1,6 @@
+{$DAYFLOW_DOMAIN:localhost} {
+    request_body {
+        max_size 2MB
+    }
+    reverse_proxy dayflow:8765
+}

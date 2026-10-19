@@ -1,0 +1,4 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/widget_root" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="16dp" android:background="#EE235C50">
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="日栖 · 接下来" android:textColor="#F8E5B7" android:textSize="18sp" />
+    <TextView android:id="@+id/widget_text" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:textColor="#FFFFFF" android:textSize="14sp" />
+</LinearLayout>

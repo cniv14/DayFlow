@@ -1,0 +1,35 @@
+services:
+  dayflow:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "${DAYFLOW_BIND:-127.0.0.1}:${DAYFLOW_PORT:-8765}:8765"
+    environment:
+      DAYFLOW_DB: /data/dayflow.db
+      DAYFLOW_REGISTRATION: ${DAYFLOW_REGISTRATION:-true}
+      DAYFLOW_INVITE_CODE: ${DAYFLOW_INVITE_CODE:-}
+      DAYFLOW_UPDATES_DIR: /updates
+    volumes:
+      - dayflow-data:/data
+      - ./updates:/updates:ro
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+  caddy:
+    image: caddy:2-alpine
+    profiles: [cloud]
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      DAYFLOW_DOMAIN: ${DAYFLOW_DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on: [dayflow]
+volumes:
+  dayflow-data:
+  caddy-data:
+  caddy-config:

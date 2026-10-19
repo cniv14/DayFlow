@@ -1,0 +1,10 @@
+<Application x:Class="DayFlow.Widget.App" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Application.Resources>
+    <Style TargetType="Button">
+      <Setter Property="Margin" Value="3,5"/><Setter Property="Padding" Value="10,7"/><Setter Property="Foreground" Value="#235C50"/>
+      <Setter Property="Background" Value="#E8F0E9"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button"><Border Background="{TemplateBinding Background}" CornerRadius="10" Padding="{TemplateBinding Padding}"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border></ControlTemplate></Setter.Value></Setter>
+    </Style>
+    <Style TargetType="TextBox"><Setter Property="Margin" Value="0,5"/><Setter Property="Padding" Value="8"/><Setter Property="BorderBrush" Value="#CBD9D1"/></Style>
+  </Application.Resources>
+</Application>

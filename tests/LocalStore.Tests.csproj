@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+ <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
+ <ItemGroup><Compile Include="../windows/LocalStore.cs" Link="LocalStore.cs" /><Compile Include="../shared/UpdateFeed.cs" Link="UpdateFeed.cs"/><EmbeddedResource Include="../update-public.pem" LogicalName="DayFlow.UpdateKey"/><None Include="fixtures/windows-update.json" CopyToOutputDirectory="PreserveNewest"/></ItemGroup>
+</Project>

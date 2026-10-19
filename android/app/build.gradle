@@ -1,0 +1,35 @@
+plugins { id 'com.android.application' }
+def keyConfigFile = rootProject.file('../.signing/android.json')
+def keyConfig = keyConfigFile.exists() ? new groovy.json.JsonSlurper().parse(keyConfigFile) : null
+android {
+    namespace 'app.dayflow'
+    compileSdk 36
+    defaultConfig {
+        applicationId 'app.dayflow'
+        minSdk 26
+        targetSdk 36
+        versionCode 1
+        versionName '0.1.0'
+        testInstrumentationRunner 'app.dayflow.SmokeTest'
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    signingConfigs {
+        release {
+            if (keyConfig != null) {
+                storeFile file(keyConfig.storeFile)
+                storePassword keyConfig.storePassword
+                keyAlias keyConfig.keyAlias
+                keyPassword keyConfig.keyPassword
+            } else if (System.getenv('DAYFLOW_KEYSTORE')) {
+                storeFile file(System.getenv('DAYFLOW_KEYSTORE'))
+                storePassword System.getenv('DAYFLOW_STORE_PASSWORD')
+                keyAlias 'dayflow'
+                keyPassword System.getenv('DAYFLOW_STORE_PASSWORD')
+            }
+        }
+    }
+    buildTypes { release { signingConfig signingConfigs.release } }
+}
