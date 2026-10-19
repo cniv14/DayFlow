@@ -42,7 +42,7 @@ def main():
     from urllib.parse import quote
     for file in sorted(Path(a.directory).iterdir()):
         if not file.is_file():continue
-        if file.name not in {'DayFlow-android.apk','DayFlow-windows.zip','DayFlow-server.zip','android-update.json','windows-update.json','测试说明.md','SHA256SUMS.txt'}:continue
+        if file.name not in {'DayFlow-android.apk','DayFlow-windows.zip','DayFlow-server.zip','android-update.json','windows-update.json','Testing.md','timetable-template.csv','SHA256SUMS.txt'}:continue
         api(upload+'?name='+quote(file.name),raw=file.read_bytes(),content_type='application/octet-stream')
         print('Uploaded '+file.name)
     print('Release: '+release['html_url'])

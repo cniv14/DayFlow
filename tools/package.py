@@ -23,10 +23,13 @@ with zipfile.ZipFile(dist/'DayFlow-server.zip','w',zipfile.ZIP_DEFLATED) as arch
     for file in (root/'docs').glob('*.md'):archive.write(file,'docs/'+file.name)
 shutil.copyfile(root/'docs/测试说明.md',dist/'测试说明.md')
 shutil.copyfile(root/'examples/课表模板.csv',dist/'课表模板.csv')
+shutil.copyfile(root/'docs/测试说明.md',dist/'Testing.md')
+shutil.copyfile(root/'examples/课表模板.csv',dist/'timetable-template.csv')
 publish(root/'.signing/updates-private.pem',dist,'https://github.com/cniv14/DayFlow/releases/download/v0.1.0','0.1.0',1,dist/'DayFlow-android.apk',dist/'DayFlow-windows.zip')
 checks=[]
+release_names={'DayFlow-android.apk','DayFlow-windows.zip','DayFlow-server.zip','android-update.json','windows-update.json','Testing.md','timetable-template.csv'}
 for file in sorted(dist.iterdir()):
-    if file.name=='SHA256SUMS.txt' or not file.is_file():continue
+    if file.name not in release_names or not file.is_file():continue
     with file.open('rb') as stream:digest=hashlib.file_digest(stream,'sha256').hexdigest()
     checks.append(digest+'  '+file.name)
 (dist/'SHA256SUMS.txt').write_text('\n'.join(checks)+'\n',encoding='utf-8')
