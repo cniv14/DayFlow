@@ -32,7 +32,7 @@ public final class Network {
                 try(InputStream input=connection.getInputStream()){String text=read(input,4*1024*1024);try{return new JSONObject(text);}catch(JSONException e){throw new IOException("服务返回了非 JSON 内容，请检查地址和反向代理配置");}}
             }finally{connection.disconnect();}
         }throw new IOException("服务器重定向次数过多，请填写最终地址");}
-        catch(UnknownHostException e){throw new IOException("无法解析服务器域名，请检查地址和网络",e);}catch(SocketTimeoutException e){throw new IOException("服务器响应超时，请检查网络、端口或增加 AI 超时时间",e);}catch(ConnectException e){throw new IOException("无法连接服务器，请检查端口、服务是否启动及防火墙",e);}catch(javax.net.ssl.SSLException e){throw new IOException("HTTPS 证书或 TLS 连接失败，请检查服务器证书配置",e);}
+        catch(UnknownHostException e){throw new IOException("无法解析服务器域名，请检查地址和网络",e);}catch(SocketTimeoutException e){throw new IOException(url.contains("/chat/completions")?"AI 响应超时，可在 AI 设置增加超时时间":"服务器响应超时，请检查网络、端口和服务状态",e);}catch(ConnectException e){throw new IOException("无法连接服务器，请检查端口、服务是否启动及防火墙",e);}catch(javax.net.ssl.SSLException e){throw new IOException("HTTPS 证书或 TLS 连接失败，请检查服务器证书配置",e);}
     }
     public static String checkServer(String address)throws Exception{String base=serverEndpoint(address);JSONObject result=request(base+"/health",null,"");if(!"dayflow".equals(result.optString("service"))||result.optInt("protocol")!=1)throw new IOException("目标不是兼容的日栖同步服务");return "连接正常 · 协议 v1 · "+base;}
     public static String read(InputStream input,int max) throws Exception {
@@ -40,6 +40,7 @@ public final class Network {
         while((n=input.read(buffer))!=-1){if(out.size()+n>max)throw new Exception("文件或响应超过大小限制");out.write(buffer,0,n);}return out.toString("UTF-8");
     }
     public static synchronized String sync(Context c) throws Exception {
+        if(Thread.currentThread().isInterrupted())throw new java.io.InterruptedIOException("系统已暂停同步，本地内容保留");
         if(c.getSharedPreferences("settings",0).getString("sync_backend","dayflow").equals("taskflow"))return TaskFlowSync.sync(c);
         return syncDayFlow(c);
     }

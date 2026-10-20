@@ -174,6 +174,11 @@ public final class Data extends SQLiteOpenHelper {
             while(c.moveToNext()){JSONObject r=new JSONObject(c.getString(0));String name=MarkdownFiles.filename(r);name=name.substring(0,name.length()-3)+"-"+r.getString("id")+".md";zip.putNextEntry(new java.util.zip.ZipEntry(name));zip.write(MarkdownFiles.markdown(r).getBytes(StandardCharsets.UTF_8));zip.closeEntry();count++;}
         }return count;
     }
+    public synchronized JSONArray reminderPage(int mode,int offset)throws JSONException{
+        String enabled=mode==1?" AND body LIKE '%\"reminder\":true%'":mode==2?" AND body NOT LIKE '%\"reminder\":true%'":"";JSONArray rows=new JSONArray();String sql="SELECT body FROM records WHERE deleted=0 AND kind IN ('event','task','course','project') AND (start_at<>'' OR due_date<>'')"+enabled+" ORDER BY CASE WHEN start_at='' THEN due_date ELSE start_at END LIMIT 40 OFFSET "+Math.max(0,offset);try(Cursor c=getReadableDatabase().rawQuery(sql,null)){while(c.moveToNext())rows.put(new JSONObject(c.getString(0)));}return rows;
+    }
+    public synchronized JSONArray childrenPage(String parent,int offset)throws JSONException{JSONArray rows=new JSONArray();try(Cursor c=getReadableDatabase().rawQuery("SELECT body FROM records WHERE deleted=0 AND kind<>'type' AND parent_id=? ORDER BY start_at,title LIMIT 40 OFFSET "+Math.max(0,offset),new String[]{parent})){while(c.moveToNext())rows.put(new JSONObject(c.getString(0)));}return rows;}
+    public synchronized int[] projectProgress(String parent){try(Cursor c=getReadableDatabase().rawQuery("SELECT COUNT(*),COALESCE(SUM(CASE WHEN completed<>'' THEN 1 ELSE 0 END),0) FROM records WHERE deleted=0 AND kind<>'type' AND parent_id=? AND body NOT LIKE '%\"status\":\"cancelled\"%'",new String[]{parent})){return c.moveToFirst()?new int[]{c.getInt(0),c.getInt(1)}:new int[]{0,0};}}
     public synchronized JSONArray reminders()throws JSONException{return calendarRows(LocalDate.now(),LocalDate.now().plusDays(367),false,false);}
     public synchronized void ack(String id,long v,String revision) throws JSONException {
         JSONObject r=find(id);if(r==null)return;
