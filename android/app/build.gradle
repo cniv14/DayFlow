@@ -8,8 +8,8 @@ android {
         applicationId 'app.dayflow'
         minSdk 26
         targetSdk 36
-        versionCode 5
-        versionName '0.5.0'
+        versionCode 100
+        versionName '1.0.0'
         testInstrumentationRunner 'app.dayflow.SmokeTest'
     }
     compileOptions {
@@ -40,6 +40,8 @@ tasks.register('generateThirdPartyNotices', Copy) {
 }
 tasks.named('preBuild').configure { dependsOn 'generateThirdPartyNotices' }
 dependencies {
+    implementation 'androidx.javascriptengine:javascriptengine:1.1.0'
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     implementation 'com.google.android.material:material:1.14.0'
     implementation 'androidx.appcompat:appcompat:1.7.1'
     implementation 'androidx.recyclerview:recyclerview:1.4.0'

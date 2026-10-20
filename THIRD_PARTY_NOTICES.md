@@ -21,3 +21,15 @@ Android 0.5.0 uses:
 The Apache License 2.0 text is included in the Android application's assets at `licenses/Apache-2.0.txt`.
 
 Weather is supplied by Open-Meteo and is attributed in the weather page. Users supply their own AI services and API credentials.
+
+## TaskFlow protocol adapter (Android 1.0.0)
+
+The adapter and schema mapping are original DayFlow MIT code. It reads the public protocol of the user-supplied TaskFlow source; no TaskFlow code is redistributed.
+
+- Yjs 13.6.33 — MIT, Copyright Kevin Jahns: https://github.com/yjs/yjs
+- y-protocols 1.0.7 — MIT, Copyright Kevin Jahns: https://github.com/yjs/y-protocols
+- lib0 0.2.119 — MIT, Copyright Kevin Jahns: https://github.com/dmonad/lib0
+- AndroidX JavaScriptEngine 1.1.0 — Apache-2.0, Android Open Source Project.
+- OkHttp 4.12.0 and Okio (transitive) — Apache-2.0, Square / their respective contributors.
+
+Yjs library license texts are included under assets/licenses/yjs. Apache-2.0 text is included in the existing assets/licenses/Apache-2.0.txt. esbuild is a build-only MIT dependency. The sandbox evaluates the bundled local protocol implementation; no remotely supplied executable code is evaluated.

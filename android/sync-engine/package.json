@@ -1,0 +1,10 @@
+{
+  "name": "dayflow-taskflow-engine",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "scripts": {"build": "node build.mjs"},
+  "dependencies": {"yjs": "13.6.33", "y-protocols": "1.0.7", "lib0": "0.2.119"},
+  "devDependencies": {"esbuild": "0.28.2"}
+}

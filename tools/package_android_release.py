@@ -60,6 +60,9 @@ def main():
     api_doc = root / 'docs/客户端同步API.md'
     if api_doc.exists():
         shutil.copyfile(api_doc, output / 'ClientSyncAPI.md')
+    taskflow_doc = root / 'docs/TaskFlow-Windows连接协议.md'
+    if taskflow_doc.exists():
+        shutil.copyfile(taskflow_doc, output / 'TaskFlowProtocol.md')
     math_included = 'ext-latex' in (root/'android/app/build.gradle').read_text(encoding='utf-8')
     if math_included:
         source = args.math_source or root/'dist/third-party/jlatexmath-android-v0.2.0-source.zip'
@@ -69,7 +72,7 @@ def main():
     names = ('DayFlow-android.apk', 'DayFlow-windows.zip', 'DayFlow-server.zip',
              'android-update.json', 'windows-update.json', 'Testing.md', 'timetable-template.csv')
     checks = []
-    for name in sorted(names + (('ClientSyncAPI.md',) if api_doc.exists() else ()) + (('MathRenderer-source.zip',) if math_included else ())):
+    for name in sorted(names + (('ClientSyncAPI.md',) if api_doc.exists() else ()) + (('TaskFlowProtocol.md',) if taskflow_doc.exists() else ()) + (('MathRenderer-source.zip',) if math_included else ())):
         file = output / name
         with file.open('rb') as stream:
             digest = hashlib.file_digest(stream, 'sha256').hexdigest()

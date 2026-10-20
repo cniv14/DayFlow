@@ -11,5 +11,6 @@ dist/
 .signing/
 .tools/
 artifacts/
+node_modules/
 *.log
 server/updates/

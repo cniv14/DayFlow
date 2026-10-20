@@ -1,6 +1,6 @@
 # DayFlow 客户端同步消息与 API（协议 v1）
 
-对应当前 `server/server.py`，以及 Android／Windows 客户端。传输协议仍为 v1，Android 0.5.0 增加类型定义与重复实例扩展字段，HTTP 路由不变。TaskFlow Windows 的 Yjs/WebSocket 是另一套协议，当前尚未适配。
+对应当前 `server/server.py`，以及 Android／Windows 客户端。传输协议仍为 v1，Android 0.5.0 增加类型定义与重复实例扩展字段，HTTP 路由不变。TaskFlow Windows 的 Yjs/WebSocket 是另一套协议，Android 1.0.0适配见《TaskFlow-Windows连接协议》。
 
 ## 1. 基础约定
 

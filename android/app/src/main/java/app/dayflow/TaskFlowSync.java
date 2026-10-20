@@ -1,0 +1,58 @@
+package app.dayflow;
+import android.content.*;
+import android.util.Base64;
+import okhttp3.*;
+import okio.ByteString;
+import org.json.*;
+import java.io.*;
+import java.nio.file.*;
+import java.time.Instant;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.*;
+
+/** Direct, bounded Yjs sync to the unmodified TaskFlow Windows sidecar. */
+final class TaskFlowSync {
+    static synchronized String sync(Context context)throws Exception{
+        Context c=context.getApplicationContext();SharedPreferences p=c.getSharedPreferences("settings",0);String address=Network.serverEndpoint(p.getString("tf_address","")),token=Secrets.get(c,"tf_token");if(token.isEmpty())throw new IOException("请先在 Windows 连接设置中输入同步密码登录");JSONObject info=TaskFlowAuth.info(address);String serverId=p.getString("tf_server_id","");if(!serverId.equals(info.getString("serverId")))throw new IOException("Windows 工作区身份改变，未合并数据，请先备份并核对服务器");if(p.getLong("tf_epoch",0)!=info.getLong("epoch"))throw new IOException("Windows 同步密码已改变，请重新登录；本地数据保留");
+        String namespace="taskflow:"+serverId;File folder=new File(c.getFilesDir(),"taskflow");if(!folder.isDirectory()&&!folder.mkdirs())throw new IOException("无法创建 Windows 同步缓存目录");File cache=new File(folder,"workspace.yjs");byte[] saved=cache.isFile()?read(cache,16*1024*1024):new byte[0];Data db=Data.get(c);db.bridgeBegin(namespace);
+        try(TaskFlowEngine engine=new TaskFlowEngine(c,saved);Link link=new Link(address,token,p.getString("device_id",""),engine)){
+            link.open();link.barrier();Session session=new Session(db,engine,link,namespace);session.pull(false);session.pushLocal();link.barrier();session.pull(true);link.barrier();
+            byte[] state=engine.save();File temporary=new File(folder,"workspace.yjs.tmp");try(FileOutputStream out=new FileOutputStream(temporary)){out.write(state);out.getFD().sync();}Files.move(temporary.toPath(),cache.toPath(),StandardCopyOption.REPLACE_EXISTING);db.bridgeCommit(namespace);
+            String message="Windows 同步完成：接收 "+session.pulled+" 条，发送 "+session.pushed+" 条，冲突副本 "+session.conflicts+" 条";p.edit().putString("sync_message",message).putString("sync_last",Instant.now().toString()).apply();AgendaWidget.refresh(c);ReminderReceiver.refresh(c);return message;
+        }
+    }
+    private static byte[] read(File file,int max)throws IOException{if(file.length()>max)throw new IOException("Windows 同步缓存超过安全上限，请先备份");return Files.readAllBytes(file.toPath());}
+    private static final class Session {
+        final Data db;final TaskFlowEngine engine;final Link link;final String namespace;int pulled,pushed,conflicts;final Map<String,JSONObject> types=new HashMap<>();final Map<String,String> typeIds=new HashMap<>(),scheduleIds=new HashMap<>();final Set<String> visited=new HashSet<>();
+        Session(Data db,TaskFlowEngine engine,Link link,String namespace){this.db=db;this.engine=engine;this.link=link;this.namespace=namespace;}
+        void pull(boolean staged)throws Exception{
+            visited.clear();for(String table:new String[]{"task_type","schedule","dayflow_record"}){int offset=0,total;do{JSONObject page=engine.page(table,offset);total=page.getInt("total");if(total>20000)throw new IOException("Windows 单表超过20000条，暂不自动载入");JSONArray rows=page.getJSONArray("rows");for(int i=0;i<rows.length();i++){JSONObject wrapper=rows.getJSONObject(i),row=wrapper.getJSONObject("fields");String id=wrapper.getString("id");if(!row.optString("dayflowMovedTo").isEmpty())continue;if(table.equals("task_type")){types.put(id,row);typeIds.put(TaskFlowRecords.localId(table,id),id);}if(table.equals("schedule"))scheduleIds.put(TaskFlowRecords.localId(table,id),id);JSONObject incoming=TaskFlowRecords.from(table,id,row,types);if(!visited.add(incoming.optString("id")))continue;reconcile(table,id,row,incoming,staged);}offset+=rows.length();if(rows.length()==0)break;}while(offset<total);}
+        }
+        void reconcile(String table,String id,JSONObject row,JSONObject incoming,boolean staged)throws Exception{
+            String nativeId=incoming.getString("id");JSONObject local=db.find(nativeId),baseline=db.bridgeBase(namespace,nativeId,staged),before=baseline==null?null:baseline.optJSONObject("record");boolean remoteChanged=baseline==null||!TaskFlowRecords.canonical(row).equals(TaskFlowRecords.canonical(baseline.optJSONObject("remote")));boolean localChanged=local!=null&&(before==null||!TaskFlowRecords.same(local,before));if(before==null&&local!=null&&local.optBoolean("system_type")&&incoming.optBoolean("system_type")&&local.optString("title").equals(incoming.optString("title"))&&local.optString("icon").isEmpty()&&local.optString("color").isEmpty())localChanged=false;boolean collision=false,push=false;
+            if(local==null){db.bridgeSave(incoming,"");local=incoming;pulled++;}
+            else if(remoteChanged){JSONObject merged=new JSONObject(local.toString());Set<String> keys=new HashSet<>();incoming.keys().forEachRemaining(keys::add);if(before!=null)before.keys().forEachRemaining(keys::add);for(String key:keys){if(key.equals("id")||key.equals("revision")||key.equals("ancestors")||key.equals("updated_at"))continue;Object remoteValue=incoming.has(key)?incoming.get(key):JSONObject.NULL,baseValue=before!=null&&before.has(key)?before.get(key):JSONObject.NULL,localValue=local.has(key)?local.get(key):JSONObject.NULL;boolean changedThere=before==null||!TaskFlowRecords.canonical(remoteValue).equals(TaskFlowRecords.canonical(baseValue));boolean changedHere=before==null?localChanged:!TaskFlowRecords.canonical(localValue).equals(TaskFlowRecords.canonical(baseValue));if(changedThere){if(changedHere&&!key.startsWith("tf_")&&!TaskFlowRecords.canonical(remoteValue).equals(TaskFlowRecords.canonical(localValue)))collision=true;if(incoming.has(key))merged.put(key,remoteValue);else merged.remove(key);}}
+                if(staged&&baseline!=null&&baseline.optBoolean("pushed")&&!TaskFlowRecords.same(local,incoming))collision=true;if(collision){db.bridgeConflict(local);conflicts++;}if(!TaskFlowRecords.same(local,merged)){Data.validate(merged);db.bridgeSave(merged,local.optString("revision"));local=merged;pulled++;}else{local.put("tf_id",id).put("tf_table",table).put("tf_raw",row);}push=localChanged;
+            }else push=localChanged;
+            if(push){String target=TaskFlowRecords.table(local);if(!target.equals(table)){JSONObject retired=new JSONObject().put("dayflowMovedTo",target).put("deletedAt",System.currentTimeMillis());engine.apply(table,id,retired);}JSONObject fields=TaskFlowRecords.to(local,typeIds,scheduleIds);engine.apply(target,id,fields);link.flush();row=engine.row(target,id);local.put("tf_id",id).put("tf_table",target);pushed++;}
+            db.bridgeStage(namespace,nativeId,new JSONObject().put("record",local).put("remote",row).put("pushed",push));
+        }
+        void pushLocal()throws Exception{
+            // Prepare ID mappings before sending parent/child relations.
+            int offset=0;JSONArray rows;do{rows=db.bridgeRows(null,offset);for(int i=0;i<rows.length();i++){JSONObject r=rows.getJSONObject(i);if(r.optString("kind").equals("type"))typeIds.put(r.optString("id"),TaskFlowRecords.externalId(r));else if(TaskFlowRecords.table(r).equals("schedule"))scheduleIds.put(r.optString("id"),TaskFlowRecords.externalId(r));}offset+=rows.length();}while(rows.length()==50&&offset<20000);
+            for(boolean typesOnly:new boolean[]{true,false}){offset=0;do{rows=db.bridgeRows(null,offset);for(int i=0;i<rows.length();i++){JSONObject r=rows.getJSONObject(i);if(r.optString("kind").equals("type")!=typesOnly||visited.contains(r.optString("id")))continue;String table=TaskFlowRecords.table(r),id=TaskFlowRecords.externalId(r);JSONObject baseline=db.bridgeBase(namespace,r.optString("id"),false);if(baseline!=null&&TaskFlowRecords.same(r,baseline.getJSONObject("record")))continue;JSONObject fields=TaskFlowRecords.to(r,typeIds,scheduleIds);engine.apply(table,id,fields);link.flush();db.bridgeStage(namespace,r.optString("id"),new JSONObject().put("record",r).put("remote",engine.row(table,id)).put("pushed",true));pushed++;}offset+=rows.length();}while(rows.length()==50&&offset<20000);}
+        }
+    }
+    private static final class Link implements AutoCloseable {
+        final TaskFlowEngine engine;final OkHttpClient client;final Request request;final ArrayBlockingQueue<byte[]> messages=new ArrayBlockingQueue<>(64);final AtomicLong queued=new AtomicLong();final AtomicReference<Exception> failure=new AtomicReference<>();final CountDownLatch opened=new CountDownLatch(1);WebSocket socket;int received;
+        Link(String address,String token,String device,TaskFlowEngine engine)throws Exception{this.engine=engine;client=new OkHttpClient.Builder().followRedirects(false).followSslRedirects(false).connectTimeout(15,TimeUnit.SECONDS).readTimeout(45,TimeUnit.SECONDS).pingInterval(15,TimeUnit.SECONDS).build();String root=address.replaceFirst("^https:","wss:").replaceFirst("^http:","ws:");request=new Request.Builder().url(root+"/ws/taskflow-workspace-v1?token="+java.net.URLEncoder.encode(token,"UTF-8")+"&device="+java.net.URLEncoder.encode(device,"UTF-8")).build();}
+        void open()throws Exception{socket=client.newWebSocket(request,new WebSocketListener(){public void onOpen(WebSocket socket,Response response){opened.countDown();}public void onMessage(WebSocket socket,ByteString data){if(data.size()>8*1024*1024||queued.addAndGet(data.size())>16*1024*1024){failure.set(new IOException("Windows 同步消息超过安全大小"));socket.cancel();return;}byte[] bytes=data.toByteArray();if(!messages.offer(bytes)){failure.set(new IOException("Windows 消息队列已满，请稍后重试"));socket.cancel();}}public void onMessage(WebSocket socket,String text){failure.set(new IOException("Windows 返回了非二进制同步消息"));socket.cancel();}public void onFailure(WebSocket socket,Throwable error,Response response){failure.set(new IOException("Windows 同步连接失败，请检查端口、密码和防火墙",error));opened.countDown();}public void onClosed(WebSocket socket,int code,String reason){failure.set(new IOException(code==4401?"Windows 登录已失效，请重新输入同步密码":"Windows 同步连接已关闭（"+code+"）"));opened.countDown();}});if(!opened.await(15,TimeUnit.SECONDS))throw new IOException("Windows 连接超时");check();}
+        void check()throws Exception{Exception error=failure.get();if(error!=null)throw error;}
+        void send(String base64)throws Exception{check();if(!socket.send(ByteString.of(Base64.decode(base64,Base64.NO_WRAP))))throw new IOException("Windows 同步发送队列不可用");}
+        void accept(byte[] bytes)throws Exception{queued.addAndGet(-bytes.length);JSONObject result=new JSONObject(engine.call("receive",Base64.encodeToString(bytes,Base64.NO_WRAP)));received=result.getInt("received");if(!result.optString("reply").isEmpty())send(result.getString("reply"));}
+        void flush()throws Exception{JSONArray updates=new JSONArray(engine.call("drain"));for(int i=0;i<updates.length();i++)send(updates.getString(i));byte[] bytes;int processed=0;while(processed++<64&&(bytes=messages.poll())!=null)accept(bytes);check();}
+        void barrier()throws Exception{int goal=received+1;send(engine.call("hello"));long until=System.nanoTime()+TimeUnit.SECONDS.toNanos(45);while(received<goal){check();long left=until-System.nanoTime();if(left<=0)throw new IOException("Windows 同步响应超时，本地数据已保留");byte[] bytes=messages.poll(Math.min(left,TimeUnit.MILLISECONDS.toNanos(500)),TimeUnit.NANOSECONDS);if(bytes==null)continue;accept(bytes);}check();}
+        public void close(){if(socket!=null)socket.cancel();messages.clear();client.connectionPool().evictAll();client.dispatcher().executorService().shutdown();}
+    }
+}

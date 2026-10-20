@@ -21,7 +21,7 @@
 
 安装包及操作步骤见 [测试说明](docs/测试说明.md)。
 
-Android 0.5.0 增加长任务进度、三级类型、截止日期、全局搜索与重复实例管理；移除顶栏、保留失败登录输入、改善连接提示，并支持 AI 下拉详细配置、Markdown 撤销／公式与系统 .md 打开，见 [新版使用说明](docs/Android-0.5.0.md)。今天首页与统一待办操作见 [0.3.0说明](docs/Android-0.3.0.md)。复用 MIT 项目 Calendar View 与 lunar-java，并使用 Apache 2.0 的 Markwon 原生笔记渲染。Android 最低支持8.0；本次只更新 Android 与服务端；Windows 不修改。TaskFlow 参考功能对照见 [功能对照](docs/TaskFlow功能对照.md)，连接该 Windows 端的协议适配随后进行。
+Android 0.5.0 增加长任务进度、三级类型、截止日期、全局搜索与重复实例管理；移除顶栏、保留失败登录输入、改善连接提示，并支持 AI 下拉详细配置、Markdown 撤销／公式与系统 .md 打开，见 [新版使用说明](docs/Android-0.5.0.md)。今天首页与统一待办操作见 [0.3.0说明](docs/Android-0.3.0.md)。复用 MIT 项目 Calendar View 与 lunar-java，并使用 Apache 2.0 的 Markwon 原生笔记渲染。Android 最低支持8.0；本次只更新 Android 与服务端；Windows 不修改。TaskFlow 参考功能对照见 [功能对照](docs/TaskFlow功能对照.md)，Android 1.0.0 已加入该 Windows 端的连接适配代码，见 [连接说明](docs/Android-1.0.0.md) 与 [适配协议](docs/TaskFlow-Windows连接协议.md)。Windows 不修改；双机效果按用户要求由用户实测。
 
 ## 项目结构
 

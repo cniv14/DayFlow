@@ -1,0 +1,9 @@
+// The sandbox exposes no DOM, network, file access or application credentials.
+globalThis.window=undefined;
+globalThis.console={log(){},warn(){},error(){},info(){},debug(){}};
+globalThis.setTimeout=()=>0;globalThis.clearTimeout=()=>{};
+globalThis.setInterval=()=>0;globalThis.clearInterval=()=>{};
+globalThis.performance={now:()=>Date.now()};
+if(typeof TextEncoder==='undefined')globalThis.TextEncoder=class{encode(value=''){const bytes=[];for(const ch of String(value)){let n=ch.codePointAt(0);if(n>=0xd800&&n<=0xdfff)n=0xfffd;if(n<128)bytes.push(n);else if(n<2048)bytes.push(192|(n>>6),128|(n&63));else if(n<65536)bytes.push(224|(n>>12),128|((n>>6)&63),128|(n&63));else bytes.push(240|(n>>18),128|((n>>12)&63),128|((n>>6)&63),128|(n&63));}return new Uint8Array(bytes);}};
+if(typeof TextDecoder==='undefined')globalThis.TextDecoder=class{decode(bytes=new Uint8Array()){let out='',chunk='';for(let i=0;i<bytes.length;i++){chunk+='%'+bytes[i].toString(16).padStart(2,'0');if(chunk.length>12000){let end=i;while(end+1<bytes.length&&(bytes[end+1]&192)===128){end++;chunk+='%'+bytes[end].toString(16).padStart(2,'0');}out+=decodeURIComponent(chunk);chunk='';i=end;}}return out+decodeURIComponent(chunk);}};
+globalThis.installRandom=function(hex){let at=0;globalThis.crypto={getRandomValues(array){const bytes=new Uint8Array(array.buffer,array.byteOffset,array.byteLength);if(at+bytes.length*2>hex.length)throw Error('Entropy pool exhausted');for(let i=0;i<bytes.length;i++){bytes[i]=parseInt(hex.slice(at,at+2),16);at+=2;}return array;},randomUUID(){const bytes=this.getRandomValues(new Uint8Array(16));bytes[6]=(bytes[6]&15)|64;bytes[8]=(bytes[8]&63)|128;const h=Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');return h.slice(0,8)+'-'+h.slice(8,12)+'-'+h.slice(12,16)+'-'+h.slice(16,20)+'-'+h.slice(20);}};return 'ready';};

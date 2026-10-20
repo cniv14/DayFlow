@@ -28,7 +28,7 @@ public final class Network {
             HttpURLConnection connection=(HttpURLConnection)target.openConnection();connection.setConnectTimeout(15000);connection.setReadTimeout(Math.max(10,Math.min(300,timeoutSeconds))*1000);connection.setInstanceFollowRedirects(false);connection.setRequestProperty("Accept","application/json");if(!token.isEmpty())connection.setRequestProperty("Authorization","Bearer "+token);
             try{if(payload!=null){connection.setRequestMethod("POST");connection.setDoOutput(true);connection.setFixedLengthStreamingMode(payload.length);connection.setRequestProperty("Content-Type","application/json; charset=utf-8");try(OutputStream out=connection.getOutputStream()){out.write(payload);}}
                 int status=connection.getResponseCode();if(status==301||status==302||status==307||status==308){String location=connection.getHeaderField("Location");if(location==null)throw new ApiException(status,"服务器重定向缺少目标地址");URL next=new URL(target,location);boolean same=next.getHost().equalsIgnoreCase(target.getHost())&&next.getProtocol().equals(target.getProtocol())&&next.getPort()==target.getPort();boolean upgrade=next.getHost().equalsIgnoreCase(target.getHost())&&target.getProtocol().equals("http")&&next.getProtocol().equals("https")&&(next.getPort()==-1||next.getPort()==443);if(!same&&!upgrade)throw new ApiException(status,"服务器重定向到其他域名，请填写最终服务地址");target=next;continue;}
-                if(status<200||status>=300){String message="HTTP "+status+"：请检查服务器地址、反向代理或账号信息";InputStream err=connection.getErrorStream();if(err!=null)try(err){String text=read(err,8192);try{JSONObject error=new JSONObject(text);Object reason=error.opt("error");if(reason instanceof JSONObject)message=((JSONObject)reason).optString("message",message);else if(reason instanceof String)message=(String)reason;}catch(JSONException ignored){if(text.trim().startsWith("<"))message="HTTP "+status+"：服务返回网页，请确认连接的是日栖服务端";}}throw new ApiException(status,message);}
+                if(status<200||status>=300){String message="HTTP "+status+"：请检查服务器地址、反向代理或账号信息";InputStream err=connection.getErrorStream();if(err!=null)try(err){String text=read(err,8192);try{JSONObject error=new JSONObject(text);Object reason=error.has("error")?error.opt("error"):error.opt("message");if(reason instanceof JSONObject)message=((JSONObject)reason).optString("message",message);else if(reason instanceof String)message=(String)reason;}catch(JSONException ignored){if(text.trim().startsWith("<"))message="HTTP "+status+"：服务返回网页，请确认连接的是日栖服务端";}}throw new ApiException(status,message);}
                 try(InputStream input=connection.getInputStream()){String text=read(input,4*1024*1024);try{return new JSONObject(text);}catch(JSONException e){throw new IOException("服务返回了非 JSON 内容，请检查地址和反向代理配置");}}
             }finally{connection.disconnect();}
         }throw new IOException("服务器重定向次数过多，请填写最终地址");}
@@ -40,6 +40,10 @@ public final class Network {
         while((n=input.read(buffer))!=-1){if(out.size()+n>max)throw new Exception("文件或响应超过大小限制");out.write(buffer,0,n);}return out.toString("UTF-8");
     }
     public static synchronized String sync(Context c) throws Exception {
+        if(c.getSharedPreferences("settings",0).getString("sync_backend","dayflow").equals("taskflow"))return TaskFlowSync.sync(c);
+        return syncDayFlow(c);
+    }
+    private static String syncDayFlow(Context c) throws Exception {
         SharedPreferences p=c.getSharedPreferences("settings",0);String base=serverEndpoint(p.getString("server","")),token=Secrets.get(c,"token");
         if(token.isEmpty())throw new Exception("本地模式：请先配置服务器并登录，或使用文件同步");
         Data db=Data.get(c);int count=0,conflicts=0;

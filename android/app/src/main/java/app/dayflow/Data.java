@@ -16,13 +16,14 @@ public final class Data extends SQLiteOpenHelper {
         return instance;
     }
     private final Context context;
-    private Data(Context c) { super(c, "dayflow.db", null, 3); context=c;setWriteAheadLoggingEnabled(true); }
+    private Data(Context c) { super(c, "dayflow.db", null, 4); context=c;setWriteAheadLoggingEnabled(true); }
     public void onCreate(SQLiteDatabase db) {
         db.execSQL("CREATE TABLE records(id TEXT PRIMARY KEY,kind TEXT,title TEXT,start_at TEXT,deleted INTEGER,dirty INTEGER,version INTEGER DEFAULT 0,body TEXT,updated_at TEXT DEFAULT '',completed TEXT DEFAULT '',end_at TEXT DEFAULT '',due_date TEXT DEFAULT '',parent_id TEXT DEFAULT '',type_id TEXT DEFAULT '',recurrence TEXT DEFAULT '')");
         db.execSQL("CREATE INDEX agenda ON records(deleted,kind,start_at)");
         db.execSQL("CREATE INDEX relations ON records(deleted,kind,parent_id,type_id)");
         db.execSQL("CREATE INDEX deadlines ON records(deleted,due_date)");
         db.execSQL("CREATE INDEX repeat_rules ON records(deleted,recurrence)");
+        bridgeTables(db);
         db.execSQL("CREATE TABLE seen(hash TEXT PRIMARY KEY,created INTEGER)");
     }
     public void onUpgrade(SQLiteDatabase db,int oldV,int newV) {
@@ -39,7 +40,21 @@ public final class Data extends SQLiteOpenHelper {
             db.execSQL("CREATE INDEX deadlines ON records(deleted,due_date)");
             try(Cursor cursor=db.rawQuery("SELECT id,body FROM records",null)){while(cursor.moveToNext())try{JSONObject r=new JSONObject(cursor.getString(1));ContentValues values=new ContentValues();values.put("due_date",r.optString("due_date"));values.put("parent_id",r.optString("parent_id"));values.put("type_id",r.optString("type_id"));values.put("recurrence",Recurrences.series(r)?r.optString("recurrence"):"");db.update("records",values,"id=?",new String[]{cursor.getString(0)});}catch(JSONException e){throw new IllegalStateException("Cannot migrate planning fields",e);}}
         }
+        if(oldV<4)bridgeTables(db);
     }
+    private static void bridgeTables(SQLiteDatabase db){for(String name:new String[]{"bridge_base","bridge_stage"})db.execSQL("CREATE TABLE IF NOT EXISTS "+name+"(bridge TEXT NOT NULL,id TEXT NOT NULL,body TEXT NOT NULL,PRIMARY KEY(bridge,id))");}
+    public synchronized JSONArray bridgeRows(String kind,int offset)throws JSONException{
+        String sql="SELECT body FROM records"+(kind==null?"":" WHERE kind=?")+" ORDER BY id LIMIT 50 OFFSET "+Math.max(0,offset);JSONArray rows=new JSONArray();try(Cursor c=getReadableDatabase().rawQuery(sql,kind==null?null:new String[]{kind})){while(c.moveToNext())rows.put(new JSONObject(c.getString(0)));}return rows;
+    }
+    public synchronized JSONObject bridgeBase(String bridge,String id,boolean staged)throws JSONException{
+        if(staged)try(Cursor c=getReadableDatabase().rawQuery("SELECT body FROM bridge_stage WHERE bridge=? AND id=?",new String[]{bridge,id})){if(c.moveToFirst())return new JSONObject(c.getString(0));}
+        try(Cursor c=getReadableDatabase().rawQuery("SELECT body FROM bridge_base WHERE bridge=? AND id=?",new String[]{bridge,id})){return c.moveToFirst()?new JSONObject(c.getString(0)):null;}
+    }
+    public synchronized void bridgeStage(String bridge,String id,JSONObject baseline){ContentValues values=new ContentValues();values.put("bridge",bridge);values.put("id",id);values.put("body",baseline.toString());getWritableDatabase().insertWithOnConflict("bridge_stage",null,values,SQLiteDatabase.CONFLICT_REPLACE);}
+    public synchronized void bridgeBegin(String bridge){getWritableDatabase().delete("bridge_stage","bridge=?",new String[]{bridge});}
+    public synchronized void bridgeCommit(String bridge){SQLiteDatabase db=getWritableDatabase();db.beginTransaction();try{db.execSQL("INSERT OR REPLACE INTO bridge_base SELECT bridge,id,body FROM bridge_stage WHERE bridge=?",new Object[]{bridge});db.delete("bridge_stage","bridge=?",new String[]{bridge});db.setTransactionSuccessful();}finally{db.endTransaction();}}
+    public synchronized void bridgeSave(JSONObject r,String expectedRevision)throws JSONException{JSONObject current=find(r.optString("id"));if(current!=null&&!current.optString("revision").equals(expectedRevision))throw new JSONException("事项正在其他页面编辑，已保留本地修改，请稍后再同步");save(r);}
+    public synchronized void bridgeConflict(JSONObject r)throws JSONException{conflictCopy(r);}
     public static JSONObject make(String kind,String title) throws JSONException {
         return new JSONObject().put("id",UUID.randomUUID().toString()).put("kind",kind).put("title",title)
             .put("content","").put("start_at","").put("end_at","").put("time_hint","")
@@ -173,6 +188,7 @@ public final class Data extends SQLiteOpenHelper {
         if(find(id)!=null)return;
         String title=r.optString("title");copy.put("id",id).put("title","[冲突副本] "+title.substring(0,Math.min(title.length(),990))).put("deleted",false)
             .put("conflict_of",r.getString("id"));
+        copy.remove("tf_id");copy.remove("tf_table");copy.remove("tf_raw");if(copy.optString("kind").equals("type"))copy.put("system_type",false);
         put(copy,true,0);
     }
     public synchronized void remote(JSONObject r,long v) throws JSONException {
