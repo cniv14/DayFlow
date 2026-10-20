@@ -7,7 +7,7 @@ namespace DayFlow.Updating;
 
 public static class UpdateFeed
 {
-    public const int VersionCode=1;
+    public const int VersionCode=3;
     public const string DefaultUrl="https://github.com/cniv14/DayFlow/releases/latest/download/windows-update.json";
     public static JsonObject Verify(string envelope,string platform)
     {

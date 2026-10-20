@@ -166,8 +166,16 @@ class Store:
             high = db.execute('SELECT COALESCE(MAX(seq),0) FROM changes WHERE user_id=?', (uid,)).fetchone()[0]
             if cursor > high:
                 raise ApiError(409, '同步游标超出服务器范围，请重置同步状态')
-            changes = db.execute('SELECT seq,version,body FROM changes WHERE user_id=? AND seq>? AND seq<=? ORDER BY seq LIMIT 200',
-                                 (uid, cursor, high)).fetchall()
+            # Page by bytes as well as count so compressed image notes cannot
+            # create multi-megabyte responses or force clients to load all data.
+            changes, page_bytes = [], 0
+            for change in db.execute('SELECT seq,version,body FROM changes WHERE user_id=? AND seq>? AND seq<=? ORDER BY seq LIMIT 200',
+                                     (uid, cursor, high)):
+                size = len(change['body'].encode('utf-8')) + 128
+                if changes and page_bytes + size > 512 * 1024:
+                    break
+                changes.append(change)
+                page_bytes += size
             next_cursor = changes[-1]['seq'] if changes else high
             for mutation in mutations:
                 record = dict(mutation['record'])

@@ -11,7 +11,7 @@ public final class PlannerServices {
         if(!binding.isEmpty()&&!binding.equals(identity))throw new Exception("当前本地数据已绑定其他账号，请先导出备份后使用独立数据目录。");
         JSONObject result=Network.request(base+"/v1/auth/"+(register?"register":"login"),new JSONObject().put("username",username).put("password",password).put("invite_code",invite).put("device_id",p.getString("device_id","")).put("device_name",Build.MANUFACTURER+" "+Build.MODEL),"");
         String old=p.getString("user_id","");if(!old.isEmpty()&&!old.equals(result.getString("user_id")))throw new Exception("服务器账号身份发生变化，请先备份数据");
-        Secrets.put(c,"token",result.getString("token"));p.edit().putString("server",base).putString("username",username.trim().toLowerCase(Locale.ROOT)).putString("binding",identity).putString("user_id",result.getString("user_id")).commit();return "登录成功，点击立即同步开始合并数据";
+        Secrets.put(c,"token",result.getString("token"));p.edit().putString("server",base).putString("username",username.trim().toLowerCase(Locale.ROOT)).putString("binding",identity).putString("user_id",result.getString("user_id")).putBoolean("sync_auto",true).commit();SyncJob.configure(c);return "登录成功，已开启全部内容自动同步";
     }
     public static JSONArray extract(Context c,JSONObject record)throws Exception{
         SharedPreferences p=c.getSharedPreferences("settings",0);String endpoint=Network.endpoint(p.getString("api_url",""),true),key=Secrets.get(c,"api_key");if(key.isEmpty())throw new Exception("请先在设置中配置 AI API Key");

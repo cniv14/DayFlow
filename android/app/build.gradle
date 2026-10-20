@@ -8,8 +8,8 @@ android {
         applicationId 'app.dayflow'
         minSdk 26
         targetSdk 36
-        versionCode 2
-        versionName '0.2.0'
+        versionCode 3
+        versionName '0.3.0'
         testInstrumentationRunner 'app.dayflow.SmokeTest'
     }
     compileOptions {
@@ -32,9 +32,18 @@ android {
         }
     }
     buildTypes { release { signingConfig signingConfigs.release } }
+    sourceSets.main.assets.srcDir(layout.buildDirectory.dir('generated/thirdPartyAssets').get().asFile)
 }
+tasks.register('generateThirdPartyNotices', Copy) {
+    from rootProject.file('../THIRD_PARTY_NOTICES.md')
+    into layout.buildDirectory.dir('generated/thirdPartyAssets/licenses')
+}
+tasks.named('preBuild').configure { dependsOn 'generateThirdPartyNotices' }
 dependencies {
     implementation 'com.google.android.material:material:1.14.0'
     implementation 'androidx.appcompat:appcompat:1.7.1'
     implementation 'androidx.recyclerview:recyclerview:1.4.0'
+    implementation 'com.kizitonwose.calendar:view:2.6.2'
+    implementation 'cn.6tail:lunar:1.7.7'
+    implementation 'io.noties.markwon:core:4.6.2'
 }

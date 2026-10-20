@@ -2,7 +2,12 @@
 
 DayFlow's original source code is licensed under MIT. Dependency licenses remain applicable to those dependencies.
 
-Android 0.2.0 uses:
+Android 0.3.0 uses:
+
+- Calendar View 2.6.2, Copyright (c) 2019 Kizito Nwose, MIT License. https://github.com/kizitonwose/Calendar — month paging, day binding and recycled calendar cells. License bundled as `licenses/Calendar-MIT.txt`.
+- lunar-java 1.7.7, Copyright (c) 2018 6tail, MIT License. https://github.com/6tail/lunar-java — offline lunar dates, festivals and solar terms. License bundled as `licenses/lunar-java-MIT.txt`.
+- Markwon 4.6.2, Copyright (c) 2017 Dimitry Ivanov, Apache License 2.0. https://github.com/noties/Markwon — native TextView Markdown rendering. It is not MIT licensed.
+- commonmark-java 0.13.0 (transitive dependency of Markwon), Copyright (c) 2015-2016 Atlassian Pty Ltd, BSD 2-Clause License. https://github.com/commonmark/commonmark-java — Markdown parsing. License bundled as `licenses/commonmark-BSD.txt`.
 
 - Material Components for Android, Copyright The Android Open Source Project, Apache License 2.0. Source and license: https://github.com/material-components/material-components-android
 - AndroidX AppCompat, Activity, RecyclerView, Core and transitive AndroidX libraries, Copyright The Android Open Source Project, Apache License 2.0. Source and license: https://android.googlesource.com/platform/frameworks/support/

@@ -15,7 +15,8 @@ public final class Data extends SQLiteOpenHelper {
         if (instance == null) instance = new Data(c.getApplicationContext());
         return instance;
     }
-    private Data(Context c) { super(c, "dayflow.db", null, 2); setWriteAheadLoggingEnabled(true); }
+    private final Context context;
+    private Data(Context c) { super(c, "dayflow.db", null, 2); context=c;setWriteAheadLoggingEnabled(true); }
     public void onCreate(SQLiteDatabase db) {
         db.execSQL("CREATE TABLE records(id TEXT PRIMARY KEY,kind TEXT,title TEXT,start_at TEXT,deleted INTEGER,dirty INTEGER,version INTEGER DEFAULT 0,body TEXT,updated_at TEXT DEFAULT '',completed TEXT DEFAULT '',end_at TEXT DEFAULT '')");
         db.execSQL("CREATE INDEX agenda ON records(deleted,kind,start_at)");
@@ -51,6 +52,7 @@ public final class Data extends SQLiteOpenHelper {
         v.put("dirty",dirty?1:0);v.put("version",version);v.put("body",r.toString());
         v.put("updated_at",r.optString("updated_at"));v.put("completed",r.optString("completed"));v.put("end_at",endIndex(r));
         getWritableDatabase().insertWithOnConflict("records",null,v,SQLiteDatabase.CONFLICT_REPLACE);
+        if(dirty)SyncJob.request(context);
     }
     private static String endIndex(JSONObject r){if(!r.optString("end_at").isEmpty())return r.optString("end_at");return r.optString("start_at").isEmpty()?"":LocalDateTime.parse(r.optString("start_at")).plusHours(1).toString();}
     private long version(String id) {
@@ -84,9 +86,22 @@ public final class Data extends SQLiteOpenHelper {
     }
     public synchronized JSONArray pending() throws JSONException {
         JSONArray rows=new JSONArray();
-        try(Cursor c=getReadableDatabase().rawQuery("SELECT body,version FROM records WHERE dirty=1 LIMIT 100",null)) {
+        // Twenty maximal records fit the server's 2 MiB request limit, including images.
+        try(Cursor c=getReadableDatabase().rawQuery("SELECT body,version FROM records WHERE dirty=1 LIMIT 20",null)) {
             while(c.moveToNext())rows.put(new JSONObject().put("record",new JSONObject(c.getString(0))).put("base_version",c.getLong(1)));
         }return rows;
+    }
+    public synchronized JSONArray dayTasks(LocalDate date)throws JSONException{
+        JSONArray rows=new JSONArray();String from=date.atStartOfDay().toString(),to=date.plusDays(1).atStartOfDay().toString();
+        try(Cursor c=getReadableDatabase().rawQuery("SELECT body FROM records WHERE deleted=0 AND kind IN ('task','event','course','project') AND start_at<? AND end_at>? ORDER BY CASE WHEN completed='' THEN 0 ELSE 1 END,start_at LIMIT 200",new String[]{to,from})){while(c.moveToNext())rows.put(new JSONObject(c.getString(0)));}return rows;
+    }
+    public synchronized JSONArray scheduled(LocalDate from,LocalDate to,boolean courses)throws JSONException{
+        JSONArray rows=new JSONArray();String sql="SELECT body FROM records WHERE deleted=0 AND kind "+(courses?"='course'":"IN ('task','event','course','project')")+" AND start_at<? AND end_at>? ORDER BY start_at LIMIT 200";
+        try(Cursor c=getReadableDatabase().rawQuery(sql,new String[]{to.atStartOfDay().toString(),from.atStartOfDay().toString()})){while(c.moveToNext())rows.put(new JSONObject(c.getString(0)));}return rows;
+    }
+    public synchronized JSONArray notes(String query)throws JSONException{
+        JSONArray rows=new JSONArray();String match="%"+query.replace("\\","\\\\").replace("%","\\%").replace("_","\\_")+"%";
+        try(Cursor c=getReadableDatabase().rawQuery("SELECT body FROM records WHERE deleted=0 AND kind='note' AND (title LIKE ? ESCAPE '\\' OR body LIKE ? ESCAPE '\\') ORDER BY CASE WHEN body LIKE '%\"pinned\":true%' THEN 0 ELSE 1 END,updated_at DESC LIMIT 200",new String[]{match,match})){while(c.moveToNext())rows.put(new JSONObject(c.getString(0)));}return rows;
     }
     public synchronized JSONArray reminders() throws JSONException {
         JSONArray rows=new JSONArray();

@@ -104,7 +104,8 @@ public sealed class LocalStore
         }
         Persist();return $"合并 {added} 条，保留冲突副本 {conflicts} 条";
     }
-    public JsonArray Pending() => new(Dirty.Take(100).Select(id=>(JsonNode)new JsonObject { ["record"]=records[id].DeepClone(), ["base_version"]=Versions.GetValueOrDefault(id) }).ToArray());
+    // Keep even batches of 64 KiB image notes below the server's 2 MiB limit.
+    public JsonArray Pending() => new(Dirty.Take(20).Select(id=>(JsonNode)new JsonObject { ["record"]=records[id].DeepClone(), ["base_version"]=Versions.GetValueOrDefault(id) }).ToArray());
     public void Acknowledge(string id,long version,string revision)
     {
         Versions[id]=version;if(records.TryGetValue(id,out var r)&&S(r,"revision")==revision)Dirty.Remove(id);

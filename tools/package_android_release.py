@@ -3,6 +3,7 @@ import argparse
 import hashlib
 from pathlib import Path
 import shutil
+import zipfile
 from publish_updates import publish
 
 
@@ -12,17 +13,36 @@ def main():
     parser.add_argument('--code', type=int, required=True)
     parser.add_argument('--companions', type=Path, required=True,
                         help='Previous release directory containing Windows/server assets and Windows feed')
+    parser.add_argument('--refresh-companions', action='store_true',
+                        help='Package newly built Windows binaries and current server with matching versions')
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     output = root / 'dist' / ('v' + args.version)
     output.mkdir(parents=True, exist_ok=True)
     # Preserve the signed Windows version and URL: its binary has not changed.
-    for name in ('DayFlow-windows.zip', 'DayFlow-server.zip', 'windows-update.json'):
-        shutil.copyfile(args.companions / name, output / name)
+    if args.refresh_companions:
+        with zipfile.ZipFile(output / 'DayFlow-windows.zip', 'w', zipfile.ZIP_DEFLATED) as archive:
+            for project, name in (('windows','DayFlow.Widget'), ('windows/Updater','DayFlow.Updater')):
+                for suffix in ('.exe','.dll','.deps.json','.runtimeconfig.json'):
+                    file=root/project/'bin/Release/net10.0-windows'/(name+suffix)
+                    archive.write(file,file.name)
+            archive.write(root/'LICENSE','LICENSE')
+            archive.writestr('README.txt','DayFlow '+args.version+'\n需要 .NET 10 Desktop Runtime。解压到可写目录，运行 DayFlow.Widget.exe。保留 Updater 文件以使用在线更新。\n')
+        with zipfile.ZipFile(output / 'DayFlow-server.zip', 'w', zipfile.ZIP_DEFLATED) as archive:
+            for name in ('server.py','test_server.py','Dockerfile','compose.yaml','Caddyfile','.env.example'):
+                archive.write(root/'server'/name,'server/'+name)
+            archive.writestr('server/updates/.keep','')
+            archive.write(root/'LICENSE','LICENSE')
+            for file in (root/'docs').glob('*.md'):
+                archive.write(file,'docs/'+file.name)
+    else:
+        for name in ('DayFlow-windows.zip', 'DayFlow-server.zip', 'windows-update.json'):
+            shutil.copyfile(args.companions / name, output / name)
     publish(root / '.signing/updates-private.pem', output,
             'https://github.com/cniv14/DayFlow/releases/download/v' + args.version,
             args.version, args.code,
-            android=root / 'android/app/build/outputs/apk/release/app-release.apk')
+            android=root / 'android/app/build/outputs/apk/release/app-release.apk',
+            windows=output/'DayFlow-windows.zip' if args.refresh_companions else None)
     shutil.copyfile(root / 'docs' / ('Android-' + args.version + '.md'), output / 'Testing.md')
     shutil.copyfile(root / 'examples/课表模板.csv', output / 'timetable-template.csv')
     names = ('DayFlow-android.apk', 'DayFlow-windows.zip', 'DayFlow-server.zip',

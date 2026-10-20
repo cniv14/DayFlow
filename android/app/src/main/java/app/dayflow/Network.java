@@ -32,7 +32,7 @@ public final class Network {
         ByteArrayOutputStream out=new ByteArrayOutputStream();byte[] buffer=new byte[8192];int n;
         while((n=input.read(buffer))!=-1){if(out.size()+n>max)throw new Exception("文件或响应超过大小限制");out.write(buffer,0,n);}return out.toString("UTF-8");
     }
-    public static String sync(Context c) throws Exception {
+    public static synchronized String sync(Context c) throws Exception {
         SharedPreferences p=c.getSharedPreferences("settings",0);String base=endpoint(p.getString("server",""),true),token=Secrets.get(c,"token");
         if(token.isEmpty())throw new Exception("本地模式：请先配置服务器并登录，或使用文件同步");
         Data db=Data.get(c);int count=0,conflicts=0;
@@ -44,7 +44,7 @@ public final class Network {
             JSONArray rejected=result.getJSONArray("conflicts");for(int i=0;i<rejected.length();i++){JSONObject a=rejected.getJSONObject(i);if(!a.isNull("record"))db.remote(a.getJSONObject("record"),a.getLong("version"));conflicts++;}
             JSONArray changes=result.getJSONArray("changes");for(int i=0;i<changes.length();i++){JSONObject a=changes.getJSONObject(i);db.remote(a.getJSONObject("record"),a.getLong("version"));}
             p.edit().putLong("cursor",result.getLong("cursor")).commit();
-            if(!result.getBoolean("has_more")&&db.pending().length()==0){AgendaWidget.refresh(c);return "同步完成：上传 "+count+" 条，冲突副本 "+conflicts+" 条";}
+            if(!result.getBoolean("has_more")&&db.pending().length()==0){AgendaWidget.refresh(c);ReminderReceiver.refresh(c);String message="同步完成：上传 "+count+" 条，冲突副本 "+conflicts+" 条";p.edit().putString("sync_last",java.time.Instant.now().toString()).putString("sync_message",message).apply();return message;}
         }throw new Exception("本批同步已保存，请再次同步以继续");
     }
 }

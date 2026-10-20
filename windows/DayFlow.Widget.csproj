@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>DayFlow.Widget</AssemblyName>
-    <Version>0.1.0</Version>
+    <Version>0.3.0</Version>
     <DefaultItemExcludes>$(DefaultItemExcludes);Updater/**</DefaultItemExcludes>
   </PropertyGroup>
   <ItemGroup>
