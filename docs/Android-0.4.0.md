@@ -37,3 +37,11 @@
 可覆盖安装原版本，沿用同一发行证书与同步协议。Windows 和服务端本次未修改，继续提供0.3.0文件及原 Windows 更新清单。
 
 同步接口说明见 [客户端同步 API](客户端同步API.md)。按用户要求只编译打包，不运行测试、模拟器或 Lint。
+
+## AI 接口预设
+
+设置 → AI 识别接口，提供 DeepSeek Flash／Pro、通义千问、通义视觉、Kimi、OpenAI 与自定义接口。选择后自动填入根地址和模型 ID，仍可修改。切换接口必须填写对应 Key，相同接口可留空保留。Key 保留在本机安全存储，不随数据同步。
+
+预设按2026-10-20官方文档填写：DeepSeek 使用 deepseek-flash／deepseek-v4-pro，千问 qwen-plus／qwen3-vl-plus，Kimi kimi-k2.6，OpenAI gpt-4.1-mini。支持账号、区域和模型以服务商为准。为避免不同模型对 temperature 的限制，不统一强制此参数；DeepSeek 和 Kimi 预设关闭思考。没有进行付费 API 调用测试。
+
+参考：[DeepSeek](https://api-docs.deepseek.com/)、[百炼](https://help.aliyun.com/zh/model-studio/qwen-api-reference/)、[Kimi](https://platform.kimi.com/docs/get-api-key)、[OpenAI](https://developers.openai.com/api/docs/models/gpt-4.1-mini)。

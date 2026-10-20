@@ -290,6 +290,14 @@ HTTP 409 则用于账号重复、游标越界等请求级错误，区别于上�
 
 payload 字段：`schema:1`、`platform`、`version`、`version_code`、`url`、`sha256`、`size`、`notes`。验证平台、版本、URL、文件大小和 SHA-256 后再安装。没有通用的其他平台安装包分发路由；新增平台需扩展现有 allowlist 与签名流程。接口不分发动态 Android 代码。
 
+## 11. AI 接口与预设（客户端直连，不经过同步服务器）
+
+Android 提供 DeepSeek、通义千问／视觉、Kimi、OpenAI 与自定义预设。服务商根地址、模型与 Key 是各设备私有配置，不加入 Record 或同步文件。预设与请求参数见 `AiPresets.java`。
+
+客户端以 `POST <根地址>/chat/completions` 调用 OpenAI 兼容格式，使用服务商自己的 Bearer Key。请求包含 `model`、`messages`、`stream:false`，部分模型另带关闭思考参数。文字消息为字符串；图片消息使用 `[{"type":"text","text":"..."},{"type":"image_url","image_url":{"url":"data:image/jpeg;base64,..."}}]`。
+
+读取 `choices[0].message.content` 中的 JSON，日程提取约定为 `{"items":[{"title":"...","start_at":"本地ISO或空","end_at":"本地ISO或空","location":"...","time_hint":"..."}]}`，最多20项。客户端验证后创建 `kind=inbox`、`source="AI 待确认"` 的本地记录，由用户确认再进入日程。使用同步服务器的登录 token 不能调用模型供应商接口，模型 Key 也不能作为同步服务器 token。
+
 ## 实现参考
 
 - 服务端：`server/server.py` 的 `Store.auth`、`Store.sync`、`Handler.dispatch`。
