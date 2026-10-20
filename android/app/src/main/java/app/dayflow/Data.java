@@ -16,15 +16,28 @@ public final class Data extends SQLiteOpenHelper {
         return instance;
     }
     private final Context context;
-    private Data(Context c) { super(c, "dayflow.db", null, 2); context=c;setWriteAheadLoggingEnabled(true); }
+    private Data(Context c) { super(c, "dayflow.db", null, 3); context=c;setWriteAheadLoggingEnabled(true); }
     public void onCreate(SQLiteDatabase db) {
-        db.execSQL("CREATE TABLE records(id TEXT PRIMARY KEY,kind TEXT,title TEXT,start_at TEXT,deleted INTEGER,dirty INTEGER,version INTEGER DEFAULT 0,body TEXT,updated_at TEXT DEFAULT '',completed TEXT DEFAULT '',end_at TEXT DEFAULT '')");
+        db.execSQL("CREATE TABLE records(id TEXT PRIMARY KEY,kind TEXT,title TEXT,start_at TEXT,deleted INTEGER,dirty INTEGER,version INTEGER DEFAULT 0,body TEXT,updated_at TEXT DEFAULT '',completed TEXT DEFAULT '',end_at TEXT DEFAULT '',due_date TEXT DEFAULT '',parent_id TEXT DEFAULT '',type_id TEXT DEFAULT '',recurrence TEXT DEFAULT '')");
         db.execSQL("CREATE INDEX agenda ON records(deleted,kind,start_at)");
+        db.execSQL("CREATE INDEX relations ON records(deleted,kind,parent_id,type_id)");
+        db.execSQL("CREATE INDEX deadlines ON records(deleted,due_date)");
+        db.execSQL("CREATE INDEX repeat_rules ON records(deleted,recurrence)");
         db.execSQL("CREATE TABLE seen(hash TEXT PRIMARY KEY,created INTEGER)");
     }
     public void onUpgrade(SQLiteDatabase db,int oldV,int newV) {
         if(oldV<2){db.execSQL("ALTER TABLE records ADD COLUMN updated_at TEXT DEFAULT ''");db.execSQL("ALTER TABLE records ADD COLUMN completed TEXT DEFAULT ''");db.execSQL("ALTER TABLE records ADD COLUMN end_at TEXT DEFAULT ''");
             try(Cursor c=db.rawQuery("SELECT id,body FROM records",null)){while(c.moveToNext())try{JSONObject r=new JSONObject(c.getString(1));ContentValues v=new ContentValues();v.put("updated_at",r.optString("updated_at"));v.put("completed",r.optString("completed"));v.put("end_at",endIndex(r));db.update("records",v,"id=?",new String[]{c.getString(0)});}catch(JSONException e){throw new IllegalStateException("Cannot migrate existing record",e);}}
+        }
+        if(oldV<3){
+            db.execSQL("ALTER TABLE records ADD COLUMN due_date TEXT DEFAULT ''");
+            db.execSQL("ALTER TABLE records ADD COLUMN parent_id TEXT DEFAULT ''");
+            db.execSQL("ALTER TABLE records ADD COLUMN type_id TEXT DEFAULT ''");
+            db.execSQL("ALTER TABLE records ADD COLUMN recurrence TEXT DEFAULT ''");
+            db.execSQL("CREATE INDEX repeat_rules ON records(deleted,recurrence)");
+            db.execSQL("CREATE INDEX relations ON records(deleted,kind,parent_id,type_id)");
+            db.execSQL("CREATE INDEX deadlines ON records(deleted,due_date)");
+            try(Cursor cursor=db.rawQuery("SELECT id,body FROM records",null)){while(cursor.moveToNext())try{JSONObject r=new JSONObject(cursor.getString(1));ContentValues values=new ContentValues();values.put("due_date",r.optString("due_date"));values.put("parent_id",r.optString("parent_id"));values.put("type_id",r.optString("type_id"));values.put("recurrence",Recurrences.series(r)?r.optString("recurrence"):"");db.update("records",values,"id=?",new String[]{cursor.getString(0)});}catch(JSONException e){throw new IllegalStateException("Cannot migrate planning fields",e);}}
         }
     }
     public static JSONObject make(String kind,String title) throws JSONException {
@@ -35,11 +48,17 @@ public final class Data extends SQLiteOpenHelper {
     }
     public static void validate(JSONObject r) throws Exception {
         UUID.fromString(r.getString("id")); UUID.fromString(r.getString("revision"));
-        if (!Arrays.asList("task","event","note","inbox","course","project").contains(r.getString("kind"))) throw new Exception("未知事项类型");
+        if (!Arrays.asList("task","event","note","inbox","course","project","type").contains(r.getString("kind"))) throw new Exception("未知事项类型");
         if (r.getString("title").length()>1000 || r.toString().getBytes(StandardCharsets.UTF_8).length>65536) throw new Exception("事项过大");
         JSONArray a=r.optJSONArray("ancestors"); if(a==null || a.length()>256) throw new Exception("无效历史");
         String start=r.optString("start_at"); if(!start.isEmpty()) LocalDateTime.parse(start);
         String end=r.optString("end_at"); if(!end.isEmpty()) LocalDateTime.parse(end);
+        if(!r.optString("due_date").isEmpty())LocalDate.parse(r.getString("due_date"));
+        if(!r.optString("recurrence_until").isEmpty())LocalDate.parse(r.getString("recurrence_until"));
+        if(!r.optString("recurrence").isEmpty()&&!Arrays.asList("none","daily","weekly","monthly").contains(r.optString("recurrence")))throw new Exception("无效重复规则");
+        JSONArray weekdays=r.optJSONArray("weekdays");if(weekdays!=null){if(weekdays.length()>7)throw new Exception("最多7个重复星期");for(int i=0;i<weekdays.length();i++)if(weekdays.optInt(i)<1||weekdays.optInt(i)>7)throw new Exception("无效重复星期");}
+        if(!r.optString("parent_id").isEmpty())UUID.fromString(r.getString("parent_id"));
+        if(!r.optString("type_id").isEmpty())UUID.fromString(r.getString("type_id"));
     }
     public synchronized JSONObject find(String id) throws JSONException {
         try(Cursor c=getReadableDatabase().rawQuery("SELECT body FROM records WHERE id=?",new String[]{id})) {
@@ -50,7 +69,7 @@ public final class Data extends SQLiteOpenHelper {
         ContentValues v=new ContentValues();v.put("id",r.getString("id"));v.put("kind",r.getString("kind"));
         v.put("title",r.getString("title"));v.put("start_at",r.optString("start_at"));v.put("deleted",r.optBoolean("deleted")?1:0);
         v.put("dirty",dirty?1:0);v.put("version",version);v.put("body",r.toString());
-        v.put("updated_at",r.optString("updated_at"));v.put("completed",r.optString("completed"));v.put("end_at",endIndex(r));
+        v.put("updated_at",r.optString("updated_at"));v.put("completed",r.optString("completed"));v.put("end_at",endIndex(r));v.put("due_date",r.optString("due_date"));v.put("parent_id",r.optString("parent_id"));v.put("type_id",r.optString("type_id"));v.put("recurrence",Recurrences.series(r)?r.optString("recurrence"):"");
         getWritableDatabase().insertWithOnConflict("records",null,v,SQLiteDatabase.CONFLICT_REPLACE);
         try{MarkdownFiles.update(context,r);}catch(java.io.IOException e){throw new JSONException("记录已保存，但 .md 文件写入失败："+e.getMessage());}
         if(dirty)SyncJob.request(context);
@@ -61,6 +80,10 @@ public final class Data extends SQLiteOpenHelper {
     }
     public synchronized void save(JSONObject r) throws JSONException {
         JSONObject old=find(r.getString("id"));
+        if(old==null&&!r.optString("series_id").isEmpty()){
+            r.put("ancestors",new JSONArray().put(r.optString("revision")));
+            r.put("revision",UUID.randomUUID().toString());
+        }
         if(old!=null) {
             JSONArray a=old.optJSONArray("ancestors"); if(a==null)a=new JSONArray();
             JSONArray bounded=new JSONArray();for(int i=Math.max(0,a.length()-254);i<a.length();i++)bounded.put(a.optString(i));
@@ -77,11 +100,41 @@ public final class Data extends SQLiteOpenHelper {
         try(Cursor c=getReadableDatabase().rawQuery(sql,args)){while(c.moveToNext())rows.put(new JSONObject(c.getString(0)));}
         return rows;
     }
-    public synchronized JSONArray range(LocalDate from,LocalDate to,boolean courses)throws JSONException{
-        JSONArray result=new JSONArray();String sql="SELECT body FROM records WHERE deleted=0 AND completed='' AND start_at<? AND end_at>? AND "+(courses?"kind='course'":"kind IN ('task','event','course','project')")+" ORDER BY start_at LIMIT 500";
-        try(Cursor c=getReadableDatabase().rawQuery(sql,new String[]{to.atStartOfDay().toString(),from.atStartOfDay().toString()})){while(c.moveToNext())result.put(new JSONObject(c.getString(0)));}return result;
+    public synchronized JSONArray range(LocalDate from,LocalDate to,boolean courses)throws JSONException{return calendarRows(from,to,courses,false);}
+    private JSONArray calendarRows(LocalDate from,LocalDate to,boolean courses,boolean includeDone)throws JSONException{
+        List<JSONObject> output=new ArrayList<>();String kinds=courses?"kind='course'":"kind IN ('task','event','course','project')";
+        String sql="SELECT body FROM records WHERE deleted=0 AND "+kinds+" AND recurrence='' AND ((start_at<? AND end_at>?) OR (start_at='' AND due_date>=? AND due_date<?)) ORDER BY start_at LIMIT 500";
+        try(Cursor cursor=getReadableDatabase().rawQuery(sql,new String[]{to.atStartOfDay().toString(),from.atStartOfDay().toString(),from.toString(),to.toString()})){
+            while(cursor.moveToNext()){JSONObject r=new JSONObject(cursor.getString(0));if(!r.optString("series_id").isEmpty()){JSONObject template=find(r.optString("series_id"));if(template!=null&&(template.optBoolean("deleted")||PlanTime.cancelled(template)||!template.optString("completed").isEmpty()))continue;}if(!PlanTime.cancelled(r)&&(includeDone||r.optString("completed").isEmpty()))output.add(r);}
+        }
+        try(Cursor cursor=getReadableDatabase().rawQuery("SELECT body FROM records WHERE deleted=0 AND "+kinds+" AND recurrence<>'' ORDER BY start_at LIMIT 500",null)){
+            while(cursor.moveToNext()&&output.size()<1000){JSONObject series=new JSONObject(cursor.getString(0));Recurrences.expand(this,series,from,to,output,1000);}
+        }
+        output.removeIf(r->PlanTime.cancelled(r)||(!includeDone&&!r.optString("completed").isEmpty()));
+        output.sort(Comparator.comparing(PlanTime::start).thenComparing(r->r.optString("title")));
+        JSONArray rows=new JSONArray();for(JSONObject r:output)rows.put(r);return rows;
     }
-    public synchronized JSONArray taskBoard(int mode)throws JSONException{JSONArray rows=new JSONArray();String clause=mode==2?"completed<>''":mode==1?"completed='' AND start_at=''":"completed=''";String sql="SELECT body FROM records WHERE deleted=0 AND kind IN ('task','event','course','project') AND "+clause+(mode==2?" ORDER BY updated_at DESC":" ORDER BY CASE WHEN start_at>='"+LocalDate.now()+"' THEN 0 WHEN start_at='' THEN 1 ELSE 2 END,start_at")+" LIMIT 150";try(Cursor c=getReadableDatabase().rawQuery(sql,null)){while(c.moveToNext())rows.put(new JSONObject(c.getString(0)));}return rows;}
+    public synchronized JSONArray business(String query,String kind,int offset)throws JSONException{
+        String pattern="%"+query.replace("\\","\\\\").replace("%","\\%").replace("_","\\_")+"%";
+        String sql="SELECT body FROM records WHERE deleted=0 AND kind<>'type' AND (title LIKE ? ESCAPE '\\' OR body LIKE ? ESCAPE '\\' OR type_id IN (SELECT id FROM records WHERE kind='type' AND title LIKE ? ESCAPE '\\'))";
+        List<String> args=new ArrayList<>(Arrays.asList(pattern,pattern,pattern));if(kind!=null){sql+=" AND kind=?";args.add(kind);}sql+=" ORDER BY updated_at DESC LIMIT 60 OFFSET "+Math.max(0,offset);
+        JSONArray result=new JSONArray();try(Cursor c=getReadableDatabase().rawQuery(sql,args.toArray(new String[0]))){while(c.moveToNext())result.put(new JSONObject(c.getString(0)));}return result;
+    }
+    public synchronized JSONArray related(String column,String id)throws JSONException{
+        if(!Arrays.asList("parent_id","type_id").contains(column))throw new JSONException("无效关联");JSONArray result=new JSONArray();try(Cursor c=getReadableDatabase().rawQuery("SELECT body FROM records WHERE deleted=0 AND "+column+"=? ORDER BY start_at,title LIMIT 1000",new String[]{id})){while(c.moveToNext())result.put(new JSONObject(c.getString(0)));}return result;
+    }
+    public synchronized int mergeType(JSONObject source,JSONObject target)throws JSONException{
+        SQLiteDatabase db=getWritableDatabase();db.beginTransaction();int count=0;
+        try{while(true){JSONArray batch=new JSONArray();try(Cursor c=db.rawQuery("SELECT body FROM records WHERE deleted=0 AND type_id=? LIMIT 20",new String[]{source.getString("id")})){while(c.moveToNext())batch.put(new JSONObject(c.getString(0)));}if(batch.length()==0)break;for(int i=0;i<batch.length();i++){save(batch.getJSONObject(i).put("type_id",target.getString("id")));count++;}}
+            save(new JSONObject(source.toString()).put("archived",true).put("merged_into",target.getString("id")));db.setTransactionSuccessful();
+        }finally{db.endTransaction();}return count;
+    }
+    public synchronized JSONObject resolve(String id,String series,String date)throws JSONException{
+        JSONObject saved=find(id);if(saved!=null)return saved;if(series==null||series.isEmpty()||date==null||date.isEmpty())return null;
+        JSONObject template=find(series);if(template==null||template.optBoolean("deleted")||PlanTime.cancelled(template)||!template.optString("completed").isEmpty()||!Recurrences.series(template))return null;
+        LocalDate day=LocalDate.parse(date);if(!Recurrences.matches(template,day))return null;JSONObject occurrence=Recurrences.instance(template,day);return id.equals(occurrence.optString("id"))?occurrence:null;
+    }
+    public synchronized JSONArray taskBoard(int mode)throws JSONException{JSONArray rows=new JSONArray();String clause=mode==2?"completed<>''":mode==1?"completed='' AND start_at=''":"completed=''";String sql="SELECT body FROM records WHERE deleted=0 AND kind IN ('task','event','course','project') AND body NOT LIKE '%\"status\":\"cancelled\"%' AND "+clause+(mode==2?" ORDER BY updated_at DESC":" ORDER BY CASE WHEN start_at>='"+LocalDate.now()+"' THEN 0 WHEN start_at='' THEN 1 ELSE 2 END,start_at")+" LIMIT 150";try(Cursor c=getReadableDatabase().rawQuery(sql,null)){while(c.moveToNext())rows.put(new JSONObject(c.getString(0)));}return rows;}
     public synchronized JSONArray undated()throws JSONException{
         JSONArray result=new JSONArray();try(Cursor c=getReadableDatabase().rawQuery("SELECT body FROM records WHERE deleted=0 AND completed='' AND start_at='' AND kind IN ('task','event','project') ORDER BY updated_at DESC LIMIT 100",null)){while(c.moveToNext())result.put(new JSONObject(c.getString(0)));}return result;
     }
@@ -92,14 +145,8 @@ public final class Data extends SQLiteOpenHelper {
             while(c.moveToNext())rows.put(new JSONObject().put("record",new JSONObject(c.getString(0))).put("base_version",c.getLong(1)));
         }return rows;
     }
-    public synchronized JSONArray dayTasks(LocalDate date)throws JSONException{
-        JSONArray rows=new JSONArray();String from=date.atStartOfDay().toString(),to=date.plusDays(1).atStartOfDay().toString();
-        try(Cursor c=getReadableDatabase().rawQuery("SELECT body FROM records WHERE deleted=0 AND kind IN ('task','event','course','project') AND start_at<? AND end_at>? ORDER BY CASE WHEN completed='' THEN 0 ELSE 1 END,start_at LIMIT 200",new String[]{to,from})){while(c.moveToNext())rows.put(new JSONObject(c.getString(0)));}return rows;
-    }
-    public synchronized JSONArray scheduled(LocalDate from,LocalDate to,boolean courses)throws JSONException{
-        JSONArray rows=new JSONArray();String sql="SELECT body FROM records WHERE deleted=0 AND kind "+(courses?"='course'":"IN ('task','event','course','project')")+" AND start_at<? AND end_at>? ORDER BY start_at LIMIT 200";
-        try(Cursor c=getReadableDatabase().rawQuery(sql,new String[]{to.atStartOfDay().toString(),from.atStartOfDay().toString()})){while(c.moveToNext())rows.put(new JSONObject(c.getString(0)));}return rows;
-    }
+    public synchronized JSONArray dayTasks(LocalDate date)throws JSONException{return calendarRows(date,date.plusDays(1),false,true);}
+    public synchronized JSONArray scheduled(LocalDate from,LocalDate to,boolean courses)throws JSONException{return calendarRows(from,to,courses,true);}
     public synchronized JSONArray notes(String query)throws JSONException{
         JSONArray rows=new JSONArray();String match="%"+query.replace("\\","\\\\").replace("%","\\%").replace("_","\\_")+"%";
         try(Cursor c=getReadableDatabase().rawQuery("SELECT body FROM records WHERE deleted=0 AND kind='note' AND (title LIKE ? ESCAPE '\\' OR body LIKE ? ESCAPE '\\') ORDER BY CASE WHEN body LIKE '%\"pinned\":true%' THEN 0 ELSE 1 END,updated_at DESC LIMIT 200",new String[]{match,match})){while(c.moveToNext())rows.put(new JSONObject(c.getString(0)));}return rows;
@@ -112,12 +159,7 @@ public final class Data extends SQLiteOpenHelper {
             while(c.moveToNext()){JSONObject r=new JSONObject(c.getString(0));String name=MarkdownFiles.filename(r);name=name.substring(0,name.length()-3)+"-"+r.getString("id")+".md";zip.putNextEntry(new java.util.zip.ZipEntry(name));zip.write(MarkdownFiles.markdown(r).getBytes(StandardCharsets.UTF_8));zip.closeEntry();count++;}
         }return count;
     }
-    public synchronized JSONArray reminders() throws JSONException {
-        JSONArray rows=new JSONArray();
-        try(Cursor c=getReadableDatabase().rawQuery("SELECT body FROM records WHERE deleted=0 AND start_at>? ORDER BY start_at LIMIT 500",new String[]{LocalDateTime.now().toString()})) {
-            while(c.moveToNext())rows.put(new JSONObject(c.getString(0)));
-        }return rows;
-    }
+    public synchronized JSONArray reminders()throws JSONException{return calendarRows(LocalDate.now(),LocalDate.now().plusDays(367),false,false);}
     public synchronized void ack(String id,long v,String revision) throws JSONException {
         JSONObject r=find(id);if(r==null)return;
         ContentValues values=new ContentValues();values.put("version",v);

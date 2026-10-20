@@ -20,7 +20,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
 MAX_BODY = 2 * 1024 * 1024
-KINDS = {"task", "event", "note", "inbox", "course", "project"}
+KINDS = {"task", "event", "note", "inbox", "course", "project", "type"}
 TOKEN_TTL = 30 * 86400
 
 
@@ -281,7 +281,7 @@ class Handler(BaseHTTPRequestHandler):
                 if not isinstance(body, dict):
                     raise ApiError(400, '请求体必须为对象')
             if path == '/health' and not post:
-                result = {'ok': True, 'protocol': 1, 'service': 'dayflow'}
+                result = {'ok': True, 'protocol': 1, 'service': 'dayflow', 'capabilities': ['types', 'recurrence'], 'version': '0.5.0'}
             elif path in ('/v1/auth/register', '/v1/auth/login') and post:
                 store.limit('auth:' + self.client_address[0])
                 result = store.auth(body, path.endswith('register'))

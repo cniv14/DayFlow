@@ -1,6 +1,6 @@
 # DayFlow 客户端同步消息与 API（协议 v1）
 
-对应当前 `server/server.py`，以及 Android／Windows 客户端。传输协议仍为 v1，Android 0.4.0 的 Markdown 文件功能没有增加服务端接口。
+对应当前 `server/server.py`，以及 Android／Windows 客户端。传输协议仍为 v1，Android 0.5.0 增加类型定义与重复实例扩展字段，HTTP 路由不变。TaskFlow Windows 的 Yjs/WebSocket 是另一套协议，当前尚未适配。
 
 ## 1. 基础约定
 
@@ -88,6 +88,7 @@ token 为不透明字符串，不是 JWT；期限为30天，`expires_at` 为 Uni
 | `note` | Markdown／文字／图片笔记 |
 | `inbox` | 待确认的通知、邮件正文、截图等 |
 | `project` | 项目／长期事项 |
+| `type` | 0.5.0新增：可同步的任务类型定义，非日程 |
 
 每一节课为单独记录。课程、笔记与待办使用同一同步流，不要为其另建不兼容的表和 API。
 
@@ -119,7 +120,7 @@ token 为不透明字符串，不是 JWT；期限为30天，`expires_at` 为 Uni
 | `id` | UUID，记录的永久身份；改标题、时间或类型都不换 ID |
 | `revision` | UUID，每次本地修改生成新修订；网络重试不要重新生成 |
 | `ancestors` | 修订 UUID 字符串数组，最多256项，用于文件合并；现有客户端保留最近254项，再追加修改前 revision |
-| `kind` | 上述六种类型之一 |
+| `kind` | 上述七种类型之一 |
 | `title` | 字符串，最多1000字符 |
 | `content` | 正文字符串；笔记直接传 Markdown 原文，不传 HTML |
 | `content_format` | 笔记可填 `markdown`；老记录可能没有该字段 |
@@ -132,7 +133,7 @@ token 为不透明字符串，不是 JWT；期限为30天，`expires_at` 为 Uni
 | `location` | 地点文字，可选 |
 | `image_base64` | 压缩 JPEG 的裸 Base64，不含 `data:` 前缀，可选 |
 | `reminder` / `remind_minutes` | 是否提醒／提前分钟数，可选；由各客户端安排本地系统提醒 |
-| `repeat` | `""` / `daily` / `weekly` / `monthly`；现有客户端在完成后生成下一次 |
+| `repeat` | 旧版 `""` / `daily` / `weekly` / `monthly` 完成后生成下一次；0.5.0新编辑使用 `recurrence` |
 | `trigger_after` / `offset_days` | 前置事项 UUID／完成后延迟天数，可选 |
 | `activation` | 阶段状态，现有值 `waiting` / `active` |
 | `source` | 收集来源／导入来源文字，可选 |
@@ -305,3 +306,31 @@ Android 提供 DeepSeek、通义千问／视觉、Kimi、OpenAI 与自定义预�
 - Windows：`LocalStore.cs` 与 `MainWindow.xaml.cs`。
 
 本文基于源码整理。本轮按用户要求没有运行协议或客户端测试。
+
+## 12. Android 0.5.0 任务模型扩展
+
+路由和 CAS／游标语义仍为 v1。服务器0.5.0允许 `kind=type`，`/health` 附带 `version:"0.5.0"` 与 `capabilities:["types","recurrence"]`；旧服务器会拒绝类型定义，需升级服务端后同步。字段均仍包含在完整 record 中，其他客户端应原样保留未知字段。
+
+| 字段 | 含义 |
+| --- | --- |
+| `type_id` | 自定义类型记录 UUID；空串表示沿用 kind |
+| `parent_id` | 对业务事项为所属长任务 UUID；对 type 为父类型 UUID |
+| `status` | `planned` / `done` / `cancelled`；完成同时更新原有 `completed` |
+| `all_day` | 全天；start_at/end_at 使用本地日期的00:00，结束排他 |
+| `due_date` | 无具体时段待办的截止日期，`YYYY-MM-DD`；不向 start_at 写入伪造时刻 |
+| `recurrence` | `""` / `daily` / `weekly` / `monthly`，只有系列模板设置非空值 |
+| `weekdays` | 周重复的 ISO 星期数组1–7；空数组用开始日期的星期 |
+| `recurrence_until` | 重复结束日期，含当天，空串表示未设置 |
+| `series_id` | 单次覆盖记录关联的系列模板 UUID |
+| `occurrence_date` | 此次重复原始所属日期，即使单次被移到其他日期也保留 |
+| `reminder_offsets` | 最多5个非负提前分钟的逗号分隔字符串，例如 `10,60,1440` |
+
+`kind=type` 的其他字段：`title` 名称、`icon`、`color`（#RRGGBB）、`base_kind`（event/project/task）、`system_type`、`archived`、`merged_into`。层级最多三级，子类型继承基础行为。归档不删除既有引用；合并会迁移引用并归档来源。
+
+重复实例由读取端生成，不预先同步成百上千个未来副本。实例 UUID 算法：对 UTF-8 `dayflow:occurrence:<series UUID>:<YYYY-MM-DD>` 计算 MD5，设置 UUID version3 与 RFC4122 variant；等价 Java `UUID.nameUUIDFromBytes`，**不额外拼接命名空间**。
+
+单次未修改时其临时 revision 由 `<模板 revision>:<日期>` 按相同 UUIDv3 算法派生；第一次保存单次覆盖时必须生成随机新 revision，临时 revision 放入祖先。保存／完成／软删除单次，传输带 `series_id` 和 `occurrence_date` 的普通完整 record。读取某次日期时，存在同实例 UUID 的落库记录（含 tombstone）便抑制模板生成，避免删除后重新出现。
+
+系列修改应用于未覆盖的实例，已覆盖实例保持自己的字段。删除／取消／完成整个系列时 Android 日历隐藏其覆盖实例。每月同日遇到无该日期的月份跳过，不移动到月末。日程时刻沿用本地无时区 ISO 约定。
+
+AI 扩展 items 字段：kind（event/task/project）、due_date、all_day、recurrence、weekdays、recurrence_until、reminder、remind_minutes、type_hint。识别结果仍是 inbox，拟定行为存在 proposed_kind，需用户确认；API Key 不进入这些记录。

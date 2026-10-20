@@ -16,18 +16,13 @@ public final class AiPresets {
         {"Kimi","https://api.moonshot.cn/v1","kimi-k2.6","Kimi 通用模型，默认关闭思考。"},
         {"OpenAI","https://api.openai.com/v1","gpt-4.1-mini","兼容 Chat Completions 的文本／图片模型。"}
     };
-    public static void show(MainActivity a){
-        SharedPreferences p=a.prefs;LinearLayout form=a.fullPage("AI 服务与模型",a::home);form.addView(Ui.help(a,"选择预设后填写自己的 API Key。接口地址和模型仍可修改；只在你主动识别时发送所选内容。"));
-        ChipGroup group=new ChipGroup(a);group.setSingleSelection(true);form.addView(group);
-        TextInputEditText endpoint=Ui.field(a,form,"API 根地址（不要包含 /chat/completions）",p.getString("api_url",""),false),model=Ui.field(a,form,"模型 ID",p.getString("model",""),false),key=Ui.field(a,form,"API Key（相同接口留空保留）","",false);key.setInputType(129);TextView hint=Ui.help(a,"选择服务商，或填写自定义 OpenAI 兼容接口。");form.addView(hint);
-        for(String[] preset:PRESETS){Chip chip=new Chip(a);chip.setText(preset[0]);chip.setCheckable(true);chip.setChecked(preset[1].equals(p.getString("api_url",""))&&preset[2].equals(p.getString("model","")));chip.setOnClickListener(v->{if(!endpoint.getText().toString().trim().equals(preset[1]))key.setText("");endpoint.setText(preset[1]);model.setText(preset[2]);hint.setText(preset[3]);});group.addView(chip);}
-        Chip custom=new Chip(a);custom.setText("自定义");custom.setCheckable(true);custom.setOnClickListener(v->hint.setText("填写完整根地址与模型 ID。局域网可使用明确的 HTTP 私有 IP 地址。"));group.addView(custom);
-        form.addView(Ui.button(a,"保存配置",true,()->{try{String root=Network.endpoint(endpoint.getText().toString(),true),name=model.getText().toString().trim(),secret=key.getText().toString().trim();if(root.endsWith("/chat/completions"))throw new Exception("请填写根地址，去掉末尾 /chat/completions");if(name.isEmpty())throw new Exception("请填写模型 ID");String previous=p.getString("api_url","");if(secret.isEmpty()&&!root.equals(previous))throw new Exception("切换接口时请填写该服务商的 API Key");if(secret.isEmpty()&&Secrets.get(a,"api_key").isEmpty())throw new Exception("请填写 API Key");if(!secret.isEmpty())Secrets.put(a,"api_key",secret);p.edit().putString("api_url",root).putString("model",name).apply();key.setText("");a.message("已保存 AI 配置");}catch(Exception e){a.message(e.getMessage());}}));
-    }
-    public static JSONObject request(String endpoint,String model,JSONArray messages)throws JSONException{
+    public static void show(MainActivity a){AiSettings.show(a);}
+    public static JSONObject request(Context context,String endpoint,String model,JSONArray messages)throws JSONException{
         JSONObject body=new JSONObject().put("model",model).put("messages",messages).put("stream",false);
         if(endpoint.equals("https://api.deepseek.com")&&(model.equals("deepseek-flash")||model.equals("deepseek-v4-pro")))body.put("thinking",new JSONObject().put("type","disabled"));
         if(endpoint.equals("https://api.moonshot.cn/v1")&&model.equals("kimi-k2.6"))body.put("thinking",new JSONObject().put("type","disabled"));
+        SharedPreferences p=context.getSharedPreferences("settings",0);String thinking=p.getString("ai_thinking","默认");if(!thinking.equals("默认")){boolean on=thinking.equals("开启");if(endpoint.contains("dashscope")||endpoint.contains("maas.aliyuncs.com"))body.put("enable_thinking",on);else body.put("thinking",new JSONObject().put("type",on?"enabled":"disabled"));}
+        String temperature=p.getString("ai_temperature",""),topP=p.getString("ai_top_p",""),tokens=p.getString("ai_max_tokens","");if(!temperature.isEmpty())body.put("temperature",Double.parseDouble(temperature));if(!topP.isEmpty())body.put("top_p",Double.parseDouble(topP));if(!tokens.isEmpty())body.put(p.getString("ai_token_field","max_tokens"),Integer.parseInt(tokens));String extra=p.getString("ai_extra","");if(!extra.isEmpty()){JSONObject params=new JSONObject(extra);java.util.Iterator<String> keys=params.keys();while(keys.hasNext()){String key=keys.next();if(!java.util.Arrays.asList("model","messages","stream").contains(key))body.put(key,params.get(key));}}
         return body;
     }
 }

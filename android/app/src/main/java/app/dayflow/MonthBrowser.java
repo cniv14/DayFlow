@@ -23,7 +23,7 @@ public final class MonthBrowser {
         LinearLayout weekdays=Ui.row(a);for(String name:new String[]{"一","二","三","四","五","六","日"}){TextView t=Ui.help(a,name);t.setGravity(Gravity.CENTER);weekdays.addView(t,new LinearLayout.LayoutParams(0,-2,1));}page.addView(weekdays);
         com.kizitonwose.calendar.view.CalendarView calendar=new com.kizitonwose.calendar.view.CalendarView(a,null);calendar.setDayViewResource(R.layout.calendar_day);calendar.setScrollPaged(true);calendar.setItemAnimator(null);calendar.setNestedScrollingEnabled(false);
         LocalDate[] selected={initial};YearMonth[] visible={YearMonth.from(initial)};Map<LocalDate,Integer> counts=new HashMap<>();
-        Runnable load=()->{counts.clear();try{LocalDate from=visible[0].atDay(1).minusDays(7);JSONArray rows=Data.get(a).range(from,visible[0].plusMonths(1).atDay(1).plusDays(7),false);for(int i=0;i<rows.length();i++){JSONObject row=rows.getJSONObject(i);LocalDate date=LocalDateTime.parse(row.getString("start_at")).toLocalDate();counts.put(date,counts.getOrDefault(date,0)+1);}}catch(Exception e){a.message("读取日期安排失败："+e.getMessage());}};
+        Runnable load=()->{counts.clear();try{LocalDate from=visible[0].atDay(1).minusDays(7);JSONArray rows=Data.get(a).range(from,visible[0].plusMonths(1).atDay(1).plusDays(7),false);for(int i=0;i<rows.length();i++){JSONObject row=rows.getJSONObject(i);LocalDate date=PlanTime.start(row).toLocalDate();counts.put(date,counts.getOrDefault(date,0)+1);}}catch(Exception e){a.message("读取日期安排失败："+e.getMessage());}};
         calendar.setDayBinder(new MonthDayBinder<DayCell>(){
             public DayCell create(View view){return new DayCell(view);}
             public void bind(DayCell cell,CalendarDay day){LocalDate date=day.getDate();boolean active=day.getPosition()==DayPosition.MonthDate,chosen=date.equals(selected[0]);int ink=chosen?Ui.color(a,com.google.android.material.R.attr.colorOnPrimaryContainer):active?Ui.ink(a):Ui.muted(a);
@@ -35,6 +35,7 @@ public final class MonthBrowser {
         calendar.setMonthScrollListener(month->{visible[0]=month.getYearMonth();title.setText(visible[0].getYear()+"年 "+visible[0].getMonthValue()+"月");load.run();calendar.post(calendar::notifyCalendarChanged);return kotlin.Unit.INSTANCE;});
         YearMonth center=YearMonth.now();calendar.setup(center.minusYears(10),center.plusYears(10),DayOfWeek.MONDAY);load.run();calendar.scrollToMonth(YearMonth.from(initial));
         page.addView(calendar,new LinearLayout.LayoutParams(-1,-2));
+        page.addView(Ui.button(a,"打印本月 / 保存 PDF",false,()->CalendarPrint.show(a,visible[0].atDay(1),visible[0].plusMonths(1).atDay(1))));
         page.addView(Ui.help(a,"左右滑动切换月份 · 圆点数字为未完成安排（含课程）"));
         page.addView(Ui.button(a,"选择这个日期",true,()->choose.accept(selected[0])));
         page.addView(Ui.button(a,"回到今天",false,()->{selected[0]=LocalDate.now();calendar.scrollToMonth(YearMonth.now());calendar.notifyCalendarChanged();info.setText(ChineseDates.description(selected[0]));}));
