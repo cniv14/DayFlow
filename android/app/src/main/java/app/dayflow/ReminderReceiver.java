@@ -30,7 +30,7 @@ public final class ReminderReceiver extends android.content.BroadcastReceiver {
                     NotificationManager manager=(NotificationManager)c.getSystemService(Context.NOTIFICATION_SERVICE);
                     manager.createNotificationChannel(new NotificationChannel("schedule","日程提醒",NotificationManager.IMPORTANCE_HIGH));
                     PendingIntent open=PendingIntent.getActivity(c,0,new Intent(c,MainActivity.class),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
-                    Notification notification=new Notification.Builder(c,"schedule").setSmallIcon(R.drawable.ic_dayflow).setContentTitle(r.optString("title")).setContentText(r.optString("start_at").replace("T"," ")+" "+r.optString("location")).setContentIntent(open).setAutoCancel(true).build();
+                    Notification notification=new Notification.Builder(c,"schedule").setSmallIcon(R.drawable.ic_notification).setContentTitle(r.optString("title")).setContentText(r.optString("start_at").replace("T"," ")+" "+r.optString("location")).setContentIntent(open).setAutoCancel(true).build();
                     try{manager.notify(id,0,notification);}catch(SecurityException ignored){}
                 }
             }schedule(c);AgendaWidget.refresh(c);

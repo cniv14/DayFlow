@@ -21,7 +21,7 @@
 
 安装包及操作步骤见 [测试说明](docs/测试说明.md)。
 
-Android 0.3.0 的今天首页、课程待办、独立表格编辑、笔记及自动同步见 [新版使用说明](docs/Android-0.3.0.md)。复用 MIT 项目 Calendar View 与 lunar-java，并使用 Apache 2.0 的 Markwon 原生笔记渲染。Android 最低支持8.0；Windows 与服务端同步修正也包含在本次下载中。
+Android 0.4.0 内置原生 Markdown 编辑器，支持真实 .md 保存、单篇／批量导出和桌面主题图标，见 [新版使用说明](docs/Android-0.4.0.md)。今天首页与统一待办操作见 [0.3.0说明](docs/Android-0.3.0.md)。复用 MIT 项目 Calendar View 与 lunar-java，并使用 Apache 2.0 的 Markwon 原生笔记渲染。Android 最低支持8.0；Windows 与服务端同步修正也包含在本次下载中。
 
 ## 项目结构
 
@@ -100,8 +100,10 @@ dotnet run -c Release
 
 Android 自定义 instrumentation 测试运行真实 SQLite、导入解析和 Keystore。测试包是独立的开发产物，不随用户 APK 安装。`artifacts/` 中的截图、测试档案及本机测量不作为源码发布。
 
-0.1.0结果：15项服务端测试、13项 Android 设备检查、10项离线合并检查及4项更新协议检查通过；Android Lint 和两端编译通过。该版本 Android 11 模拟器小数据量前台空闲 PSS 约45MB，不能用于推断0.2.0或其他机型的内存。Android 0.2.0与0.3.0按用户要求只做编译，不运行测试，行为由用户实测。
+0.1.0结果：15项服务端测试、13项 Android 设备检查、10项离线合并检查及4项更新协议检查通过；Android Lint 和两端编译通过。该版本 Android 11 模拟器小数据量前台空闲 PSS 约45MB，不能用于推断0.2.0或其他机型的内存。Android 0.2.0、0.3.0与0.4.0按用户要求只做编译，不运行测试，行为由用户实测。
 
 ## 许可证与依赖
 
 本项目代码采用 [MIT License](LICENSE)。Android UI 依赖的 Material Components 和 AndroidX 使用 Apache 2.0，详见 [第三方声明](THIRD_PARTY_NOTICES.md)。Android SDK、OpenJDK、.NET、Python、Caddy 与构建工具各自保留其原许可证；MIT 不替代这些许可证。天气来自 [Open-Meteo](https://open-meteo.com/)，AI 使用用户自行配置的服务。
+
+其他客户端开发请参阅 [同步消息类型与 API](docs/客户端同步API.md)。

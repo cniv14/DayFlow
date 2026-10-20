@@ -7,7 +7,7 @@
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <application android:name=".DayFlowApp" android:label="日栖 DayFlow" android:theme="@style/Theme.DayFlow"
-        android:icon="@drawable/ic_dayflow" android:allowBackup="false" android:supportsRtl="true"
+        android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher" android:allowBackup="false" android:supportsRtl="true"
         android:usesCleartextTraffic="true">
         <activity android:name=".MainActivity" android:launchMode="singleTop" android:exported="true" android:windowSoftInputMode="adjustResize">
             <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
@@ -17,7 +17,7 @@
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE" android:exported="true">
             <intent-filter><action android:name="android.service.notification.NotificationListenerService" /></intent-filter>
         </service>
-        <service android:name=".QuickTile" android:label="日栖 · 快速记录" android:icon="@drawable/ic_dayflow"
+        <service android:name=".QuickTile" android:label="日栖 · 快速记录" android:icon="@drawable/ic_notification"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE" android:exported="true">
             <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
         </service>

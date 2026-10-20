@@ -45,10 +45,13 @@ def main():
             windows=output/'DayFlow-windows.zip' if args.refresh_companions else None)
     shutil.copyfile(root / 'docs' / ('Android-' + args.version + '.md'), output / 'Testing.md')
     shutil.copyfile(root / 'examples/课表模板.csv', output / 'timetable-template.csv')
+    api_doc = root / 'docs/客户端同步API.md'
+    if api_doc.exists():
+        shutil.copyfile(api_doc, output / 'ClientSyncAPI.md')
     names = ('DayFlow-android.apk', 'DayFlow-windows.zip', 'DayFlow-server.zip',
              'android-update.json', 'windows-update.json', 'Testing.md', 'timetable-template.csv')
     checks = []
-    for name in sorted(names):
+    for name in sorted(names + (('ClientSyncAPI.md',) if api_doc.exists() else ())):
         file = output / name
         with file.open('rb') as stream:
             digest = hashlib.file_digest(stream, 'sha256').hexdigest()

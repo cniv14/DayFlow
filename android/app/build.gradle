@@ -8,8 +8,8 @@ android {
         applicationId 'app.dayflow'
         minSdk 26
         targetSdk 36
-        versionCode 3
-        versionName '0.3.0'
+        versionCode 4
+        versionName '0.4.0'
         testInstrumentationRunner 'app.dayflow.SmokeTest'
     }
     compileOptions {
@@ -46,4 +46,7 @@ dependencies {
     implementation 'com.kizitonwose.calendar:view:2.6.2'
     implementation 'cn.6tail:lunar:1.7.7'
     implementation 'io.noties.markwon:core:4.6.2'
+    implementation 'io.noties.markwon:ext-strikethrough:4.6.2'
+    implementation 'io.noties.markwon:ext-tasklist:4.6.2'
+    implementation 'io.github.yahiaangelo.markdownedittext:markdownedittext:1.1.3'
 }

@@ -13,13 +13,13 @@ public final class EditorPanel {
     private final MainActivity a;private final JSONObject source;
     private final TextInputEditText title,content,location,hint;
     private final MaterialSwitch scheduled,reminder;private final Spinner repeat;
-    private LocalDateTime start,end;private String kind;private LinearLayout scheduleGroup,noteTools;
+    private LocalDateTime start,end;private String kind;private LinearLayout scheduleGroup;
     public EditorPanel(MainActivity activity,JSONObject record){a=activity;source=record;kind=record.optString("kind","event");
         LinearLayout form=a.fullPage("inbox".equals(kind)?"确认这条通知":"编辑事项",a::home);
         title=Ui.field(a,form,"标题",record.optString("title"),false);title.setId(5101);
         ChipGroup types=new ChipGroup(a);types.setSingleSelection(true);types.setSelectionRequired(true);String[] names={"日程","待办","笔记","课程"},values={"event","task","note","course"};
-        for(int i=0;i<names.length;i++){String value=values[i];Chip chip=new Chip(a);chip.setText(names[i]);chip.setCheckable(true);chip.setChecked(value.equals(kind)||("inbox".equals(kind)&&i==0));chip.setOnClickListener(v->{kind=value;if(scheduleGroup!=null)scheduleGroup.setVisibility(kind.equals("note")?View.GONE:View.VISIBLE);if(noteTools!=null)noteTools.setVisibility(kind.equals("note")?View.VISIBLE:View.GONE);});types.addView(chip);}if(kind.equals("inbox"))kind="event";form.addView(types);
-        content=Ui.field(a,form,"正文 / 备注",record.optString("content"),true);noteTools=Ui.column(a);noteTools.addView(NoteTools.toolbar(a,content));noteTools.addView(Ui.help(a,"支持 Markdown；笔记正文、置顶和附图都会同步。"));noteTools.addView(Ui.button(a,"预览笔记",false,this::preview));noteTools.setVisibility(kind.equals("note")?View.VISIBLE:View.GONE);form.addView(noteTools);scheduleGroup=Ui.column(a);form.addView(scheduleGroup);
+        for(int i=0;i<names.length;i++){String value=values[i];Chip chip=new Chip(a);chip.setText(names[i]);chip.setCheckable(true);chip.setChecked(value.equals(kind)||("inbox".equals(kind)&&i==0));chip.setOnClickListener(v->{if("note".equals(value)){try{a.edit(draft().put("kind","note"));}catch(JSONException e){a.message(e.getMessage());}return;}kind=value;if(scheduleGroup!=null)scheduleGroup.setVisibility(kind.equals("note")?View.GONE:View.VISIBLE);});types.addView(chip);}if(kind.equals("inbox"))kind="event";form.addView(types);
+        content=Ui.field(a,form,"正文 / 备注",record.optString("content"),true);scheduleGroup=Ui.column(a);form.addView(scheduleGroup);
         start=record.optString("start_at").isEmpty()?LocalDateTime.now().plusHours(1).withMinute(0).withSecond(0).withNano(0):LocalDateTime.parse(record.optString("start_at"));end=record.optString("end_at").isEmpty()?start.plusHours(1):LocalDateTime.parse(record.optString("end_at"));
         scheduled=new MaterialSwitch(a);scheduled.setText("安排具体时间");scheduled.setChecked(!record.optString("start_at").isEmpty());scheduled.setPadding(0,Ui.dp(a,10),0,Ui.dp(a,10));scheduleGroup.addView(scheduled);
         LinearLayout timing=Ui.column(a);scheduleGroup.addView(timing);TextView startLabel=Ui.text(a,"",15,true),endLabel=Ui.text(a,"",15,true);timing.addView(startLabel);timing.addView(Ui.button(a,"选择开始时间",false,()->pickTime(false,startLabel,endLabel)));timing.addView(endLabel);timing.addView(Ui.button(a,"选择结束时间",false,()->pickTime(true,startLabel,endLabel)));updateLabels(startLabel,endLabel);
@@ -41,6 +41,6 @@ public final class EditorPanel {
     private JSONObject snapshot()throws JSONException{JSONObject r=new JSONObject(source.toString());r.put("title",title.getText().toString().trim()).put("kind",kind).put("content",content.getText().toString()).put("location",location.getText().toString()).put("time_hint",hint.getText().toString()).put("start_at",scheduled.isChecked()?start.toString():"").put("end_at",scheduled.isChecked()?end.toString():"").put("reminder",reminder.isChecked()).put("remind_minutes",10).put("repeat",new String[]{"","daily","weekly","monthly"}[repeat.getSelectedItemPosition()]);return r;}
     public JSONObject draft(){try{return snapshot();}catch(JSONException e){return source;}}
     private void restore(){a.edit(draft());}
-    private void preview(){JSONObject draft=draft();LinearLayout page=a.fullPage("笔记预览",()->a.edit(draft));page.addView(Ui.text(a,title.getText().toString(),24,true));TextView text=Ui.text(a,"",16,false);NoteTools.render(text,content.getText().toString());text.setTextIsSelectable(true);page.addView(text);page.addView(Ui.button(a,"继续编辑",true,()->a.edit(draft)));}
+
     private void save(){try{JSONObject r=snapshot();if(r.getString("title").isEmpty()){title.setError("请填写标题");title.requestFocus();return;}if(scheduled.isChecked()&&!end.isAfter(start))throw new Exception("结束时间需要晚于开始时间");Data.validate(r);Data.get(a).save(r);a.editorState=null;a.changed();a.home();a.message("已保存");if(reminder.isChecked())a.notificationPermission();}catch(Exception e){a.message(e.getMessage());}}
 }

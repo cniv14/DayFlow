@@ -2,7 +2,9 @@
 
 DayFlow's original source code is licensed under MIT. Dependency licenses remain applicable to those dependencies.
 
-Android 0.3.0 uses:
+Android 0.4.0 uses:
+
+- MarkdownEditText 1.1.3, Copyright 2020 YahiaAngelo, Apache License 2.0. https://github.com/YahiaAngelo/MarkdownEditText — embedded native rich Markdown editor and styles bar. DayFlow adapts the styles-bar item layout for theme colors and larger touch targets. License bundled as `licenses/MarkdownEditText-Apache-2.0.txt`.
 
 - Calendar View 2.6.2, Copyright (c) 2019 Kizito Nwose, MIT License. https://github.com/kizitonwose/Calendar — month paging, day binding and recycled calendar cells. License bundled as `licenses/Calendar-MIT.txt`.
 - lunar-java 1.7.7, Copyright (c) 2018 6tail, MIT License. https://github.com/6tail/lunar-java — offline lunar dates, festivals and solar terms. License bundled as `licenses/lunar-java-MIT.txt`.

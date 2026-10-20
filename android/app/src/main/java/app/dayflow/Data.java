@@ -52,6 +52,7 @@ public final class Data extends SQLiteOpenHelper {
         v.put("dirty",dirty?1:0);v.put("version",version);v.put("body",r.toString());
         v.put("updated_at",r.optString("updated_at"));v.put("completed",r.optString("completed"));v.put("end_at",endIndex(r));
         getWritableDatabase().insertWithOnConflict("records",null,v,SQLiteDatabase.CONFLICT_REPLACE);
+        try{MarkdownFiles.update(context,r);}catch(java.io.IOException e){throw new JSONException("记录已保存，但 .md 文件写入失败："+e.getMessage());}
         if(dirty)SyncJob.request(context);
     }
     private static String endIndex(JSONObject r){if(!r.optString("end_at").isEmpty())return r.optString("end_at");return r.optString("start_at").isEmpty()?"":LocalDateTime.parse(r.optString("start_at")).plusHours(1).toString();}
@@ -102,6 +103,14 @@ public final class Data extends SQLiteOpenHelper {
     public synchronized JSONArray notes(String query)throws JSONException{
         JSONArray rows=new JSONArray();String match="%"+query.replace("\\","\\\\").replace("%","\\%").replace("_","\\_")+"%";
         try(Cursor c=getReadableDatabase().rawQuery("SELECT body FROM records WHERE deleted=0 AND kind='note' AND (title LIKE ? ESCAPE '\\' OR body LIKE ? ESCAPE '\\') ORDER BY CASE WHEN body LIKE '%\"pinned\":true%' THEN 0 ELSE 1 END,updated_at DESC LIMIT 200",new String[]{match,match})){while(c.moveToNext())rows.put(new JSONObject(c.getString(0)));}return rows;
+    }
+    public synchronized void materializeNotes()throws Exception{
+        try(Cursor c=getReadableDatabase().rawQuery("SELECT body FROM records WHERE kind='note'",null)){while(c.moveToNext())MarkdownFiles.update(context,new JSONObject(c.getString(0)));}
+    }
+    public synchronized int exportMarkdownZip(java.io.OutputStream output)throws Exception{
+        int count=0;try(java.util.zip.ZipOutputStream zip=new java.util.zip.ZipOutputStream(output);Cursor c=getReadableDatabase().rawQuery("SELECT body FROM records WHERE deleted=0 AND kind='note' ORDER BY id",null)){
+            while(c.moveToNext()){JSONObject r=new JSONObject(c.getString(0));String name=MarkdownFiles.filename(r);name=name.substring(0,name.length()-3)+"-"+r.getString("id")+".md";zip.putNextEntry(new java.util.zip.ZipEntry(name));zip.write(MarkdownFiles.markdown(r).getBytes(StandardCharsets.UTF_8));zip.closeEntry();count++;}
+        }return count;
     }
     public synchronized JSONArray reminders() throws JSONException {
         JSONArray rows=new JSONArray();
