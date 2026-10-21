@@ -1,0 +1,17 @@
+package app.dayflow.ocr;
+import android.content.*;
+import android.graphics.*;
+import android.net.Uri;
+import android.os.*;
+import android.widget.*;
+import androidx.appcompat.app.AppCompatActivity;
+import com.google.android.material.button.MaterialButton;
+import com.benjaminwan.ocrlibrary.*;
+import java.io.*;
+/** No internet/storage/SMS permissions. Gets one read-only URI from the calling app. */
+public final class OcrActivity extends AppCompatActivity {
+ private final Handler handler=new Handler(Looper.getMainLooper());private final java.util.concurrent.ExecutorService worker=java.util.concurrent.Executors.newSingleThreadExecutor();private boolean done;
+ public void onCreate(Bundle state){super.onCreate(state);LinearLayout page=new LinearLayout(this);page.setOrientation(1);page.setPadding(24,48,24,24);setContentView(page);TextView text=new TextView(this);text.setTextSize(18);text.setText("离线OCR · RapidOCR\n模型只在本插件内加载，结束后释放进程。首次识别可能稍慢。");page.addView(text);MaterialButton cancel=new MaterialButton(this);cancel.setText("取消识别");cancel.setOnClickListener(v->finish());page.addView(cancel);if(!"app.dayflow".equals(getCallingPackage())||getIntent().getIntExtra("dayflow_protocol",0)!=1){text.setText("请从日栖扩展中心选择截图后启动。");return;}Uri uri=getIntent().getData();if(uri==null){text.setText("请从日栖选择一张截图。");return;}handler.postDelayed(()->result(null,"识别超时，请裁剪较小区域后重试"),90000);worker.execute(()->{Bitmap bitmap=null,output=null;try{BitmapFactory.Options options=new BitmapFactory.Options();options.inJustDecodeBounds=true;try(InputStream in=getContentResolver().openInputStream(uri)){BitmapFactory.decodeStream(in,null,options);}if(options.outWidth<=0||options.outHeight<=0)throw new IOException("无法读取截图");options.inSampleSize=1;while(Math.max(options.outWidth,options.outHeight)/options.inSampleSize>1800||(long)options.outWidth*options.outHeight/options.inSampleSize/options.inSampleSize>2500000)options.inSampleSize*=2;options.inJustDecodeBounds=false;try(InputStream in=getContentResolver().openInputStream(uri)){bitmap=BitmapFactory.decodeStream(in,null,options);}if(bitmap==null)throw new IOException("截图解码失败");output=Bitmap.createBitmap(bitmap.getWidth(),bitmap.getHeight(),Bitmap.Config.ARGB_8888);OcrEngine engine=new OcrEngine(getApplicationContext());OcrResult recognized=engine.detect(bitmap,output,1600);String content=recognized.getStrRes();if(content==null||content.trim().isEmpty())throw new IOException("未识别到文字，请旋转或裁剪截图");if(content.getBytes(java.nio.charset.StandardCharsets.UTF_8).length>48000)throw new IOException("识别内容过长，请分区识别");String result=content;runOnUiThread(()->result(result,null));}catch(Throwable e){String message=e instanceof LinkageError?"此设备不兼容当前OCR原生库，可使用主应用AI图片识别":e instanceof OutOfMemoryError?"内存不足，请裁剪小图后重试":"离线识别失败："+(e.getMessage()==null?e.getClass().getSimpleName():e.getMessage());runOnUiThread(()->result(null,message));}finally{if(bitmap!=null)bitmap.recycle();if(output!=null)output.recycle();}});}
+ private void result(String text,String error){if(done||isFinishing()||isDestroyed())return;done=true;handler.removeCallbacksAndMessages(null);Intent result=new Intent();if(text!=null)result.putExtra(Intent.EXTRA_TEXT,text);if(error!=null)result.putExtra("dayflow_error",error);setResult(RESULT_OK,result);finish();}
+ protected void onDestroy(){handler.removeCallbacksAndMessages(null);worker.shutdownNow();boolean exit=isFinishing();super.onDestroy();if(exit)new Handler(Looper.getMainLooper()).postDelayed(()->android.os.Process.killProcess(android.os.Process.myPid()),400);}
+}

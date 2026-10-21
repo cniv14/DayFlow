@@ -14,8 +14,10 @@ public final class CaptureService extends NotificationListenerService {
     public CaptureService(){worker.allowCoreThreadTimeOut(true);}
     public void onNotificationPosted(StatusBarNotification sbn) {try{capture(sbn);}catch(RuntimeException ignored){/* Malformed app extras must not crash the listener. */}}
     private void capture(StatusBarNotification sbn) {
-        if(!getSharedPreferences("settings",0).getBoolean("capture",false))return;
+        if(!getSharedPreferences("settings",0).getBoolean("capture",false)&&!getSharedPreferences("settings",0).getBoolean("capture_sms",false))return;
         String pkg=sbn.getPackageName();
+        if(SmsCapture.smsPackage(this,pkg)){Bundle extras=sbn.getNotification().extras;if(extras!=null){String sender=String.valueOf(extras.getCharSequence(Notification.EXTRA_TITLE,"")),body=String.valueOf(extras.getCharSequence(Notification.EXTRA_BIG_TEXT,extras.getCharSequence(Notification.EXTRA_TEXT,"")));worker.execute(()->{try{SmsCapture.save(this,sender,body);}catch(Exception ignored){}});}return;}
+        if(!getSharedPreferences("settings",0).getBoolean("capture",false))return;
         String allowed=getSharedPreferences("settings",0).getString("packages","com.tencent.mobileqq,com.tencent.mm,com.tencent.tim,com.google.android.gm");
         boolean match=false;for(String p:allowed.split(","))if(pkg.equals(p.trim()))match=true;if(!match)return;
         Notification n=sbn.getNotification();if((n.flags&Notification.FLAG_GROUP_SUMMARY)!=0)return;

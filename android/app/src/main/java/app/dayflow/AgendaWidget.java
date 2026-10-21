@@ -19,7 +19,7 @@ public final class AgendaWidget extends AppWidgetProvider {
     public void onAppWidgetOptionsChanged(Context c,AppWidgetManager m,int id,Bundle options){onUpdate(c,m,new int[]{id});}
     public void onUpdate(Context c,AppWidgetManager manager,int[] ids){
         SharedPreferences prefs=c.getSharedPreferences("settings",0);String theme=prefs.getString("theme","system");boolean dark=theme.equals("dark")||(theme.equals("system")&&(c.getResources().getConfiguration().uiMode&Configuration.UI_MODE_NIGHT_MASK)==Configuration.UI_MODE_NIGHT_YES);int ink=dark?0xffe0e8e0:0xff18201d,muted=dark?0xffb3c1b8:0xff58675c,accent=dark?0xffa0d0bf:0xff386a5c;
-        if(Build.VERSION.SDK_INT>=31&&prefs.getBoolean("dynamic_color",true))accent=c.getColor(dark?android.R.color.system_accent1_200:android.R.color.system_accent1_700);
+        accent=ThemeColors.accent(c,dark);
         JSONArray rows=new JSONArray();try{rows=Data.get(c).range(LocalDate.now(),LocalDate.now().plusDays(7),false);}catch(Exception ignored){}
         JSONObject pending=null;int pendingCount=0;try{if(prefs.getBoolean("widget_inbox",true)){pendingCount=Data.get(c).inboxCount();pending=Data.get(c).list("inbox",1).optJSONObject(0);}}catch(Exception ignored){}
         int[] rowIds={R.id.widget_row1,R.id.widget_row2,R.id.widget_row3},titles={R.id.widget_title1,R.id.widget_title2,R.id.widget_title3},meta={R.id.widget_meta1,R.id.widget_meta2,R.id.widget_meta3},opens={R.id.widget_open1,R.id.widget_open2,R.id.widget_open3},done={R.id.widget_done1,R.id.widget_done2,R.id.widget_done3};

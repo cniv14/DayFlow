@@ -354,3 +354,23 @@ AI 扩展 items 字段：kind（event/task/project）、due_date、all_day、rec
 TaskFlow适配的无结束时间事项以endAt=null传输；新增展示与提醒方式字段保留在attributesJson.dayflow。Windows通知channel保持其已有协议，Android闹钟方式由扩展字段控制，避免修改Windows实现。
 
 AI课表是客户端直接访问用户模型接口，输入image_url与补充文字，输出courses数组；经过编辑确认再转成课程记录。不经过同步服务器，也不上传API Key。
+
+
+## Android 1.2.0：打卡、笔记联动、短信及看板
+
+不新增HTTP路由或消息类型，仍使用完整record、mutations/changes、CAS版本及.dayflow合并。必须保留未知字段，扩展字段同样参与修订和删除标记。
+
+| 字段 | 所在记录与含义 |
+| --- | --- |
+| checkin_goal | project，目标天数1–3650 |
+| checkin_for、checkin_date | note，项目UUID及YYYY-MM-DD；parent_id同项目UUID |
+| focus_for、focus_seconds | note，关联事项UUID（可空）和非负投入秒数 |
+| board_status | task/project，planned/doing；完成状态以completed为准 |
+| source_note_id、source_note_line、source_note_text | 提取task的来源笔记UUID、零起始行号及原始勾选项正文，匹配才回写 |
+| capture_type | inbox，短信分类，由Android规则写入 |
+| pickup_code、bill_amount | inbox，可选取件码/金额文字，只是提取建议，非交易指令 |
+| workdays_only | 重复模板布尔值，按本机调休数据过滤，缺年份时按周末回退 |
+
+打卡UUID为对UTF-8 `dayflow:checkin:<项目UUID>:<YYYY-MM-DD>`执行UUID.nameUUIDFromBytes（MD5+version3+RFC4122 variant，无额外命名空间）。相同日保存更新原记录，撤销使用deleted=true。其他客户端无需提供打卡UI也能将其作为普通Markdown笔记展示和同步。专注记录使用 `focus:<本次随机UUID>` 同算法生成ID。笔记提取任务使用 `md-task:<笔记UUID>:<零起始行号>:<正文>` 同算法，最多100项；不要用文件名当记录身份。
+
+截图、网页、插件识别先为inbox/pending，用户确认后转正式记录。所有导入流程均不能把插件提供的ID当作覆盖权限。插件Intent协议与云同步分开，见插件API.md。主题、权限、插件安装与启用、天气缓存及正在计时的会话不随记录同步；打卡笔记、完成的专注笔记和来源关联字段参与同步。原TaskFlow attributesJson.dayflow扩展映射保留未知字段；未进行真实双机验证。

@@ -19,5 +19,5 @@ public final class MarkdownFiles {
         byte[] bytes=markdown(r).getBytes(StandardCharsets.UTF_8);FileOutputStream out=null;
         try{out=atomic.startWrite();out.write(bytes);atomic.finishWrite(out);}catch(IOException e){if(out!=null)atomic.failWrite(out);throw e;}
     }
-    public static String filename(JSONObject r){String title=r.optString("title","笔记").replaceAll("[\\\\/:*?\"<>|\\p{Cntrl}]","_").trim();if(title.isEmpty())title="笔记";if(title.length()>80)title=title.substring(0,80);return title.toLowerCase(java.util.Locale.ROOT).endsWith(".md")?title:title+".md";}
+    public static String filename(JSONObject r){String title=r.optString("title",java.time.LocalDate.now().toString()).replaceAll("[\\\\/:*?\"<>|\\p{Cntrl}]","_").trim();if(title.isEmpty())title=java.time.LocalDate.now().toString();if(title.length()>80)title=title.substring(0,80);return title.toLowerCase(java.util.Locale.ROOT).endsWith(".md")?title:title+".md";}
 }

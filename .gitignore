@@ -14,3 +14,5 @@ artifacts/
 node_modules/
 *.log
 server/updates/
+
+android/ocrPlugin/libs/*.aar

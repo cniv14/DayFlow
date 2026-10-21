@@ -7,7 +7,7 @@ import java.util.*;
 /** Read-time expansion: no unbounded future rows or completion-dependent calendar holes. */
 public final class Recurrences {
     public static boolean series(JSONObject r){return !r.optString("recurrence").isEmpty()&&!r.optString("recurrence").equals("none")&&r.optString("series_id").isEmpty();}
-    public static boolean matches(JSONObject r,LocalDate day){
+    public static boolean matches(JSONObject r,LocalDate day){if(r.optBoolean("workdays_only")&&!Holidays.working(day))return false;
         LocalDateTime start=PlanTime.start(r);if(start==null||day.isBefore(start.toLocalDate()))return false;
         String until=r.optString("recurrence_until");if(!until.isEmpty()&&day.isAfter(LocalDate.parse(until)))return false;
         switch(r.optString("recurrence")){

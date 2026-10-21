@@ -26,6 +26,6 @@ public final class PlannerServices {
         if(!Double.isFinite(lat)||!Double.isFinite(lon)||lat< -90||lat>90||lon< -180||lon>180)throw new Exception("无效位置");lat=Math.round(lat*100)/100.0;lon=Math.round(lon*100)/100.0;
         JSONObject current=Network.request("https://api.open-meteo.com/v1/forecast?latitude="+lat+"&longitude="+lon+"&current=temperature_2m,weather_code&timezone=auto",null,"").getJSONObject("current");int code=current.getInt("weather_code");
         String sky=code==0?"晴":code<=3?"多云":code<=48?"雾":code<=67?"雨":code<=77?"雪":code<=82?"阵雨":code<=86?"阵雪":"雷雨",value=sky+"  "+Math.round(current.getDouble("temperature_2m"))+"°";
-        c.getSharedPreferences("settings",0).edit().putString("lat",Double.toString(lat)).putString("lon",Double.toString(lon)).putString("city",city).putString("weather_cache",value).putString("weather_time",LocalDateTime.now().toString()).putLong("weather_updated",System.currentTimeMillis()).apply();AgendaWidget.refresh(c);return value;
+        c.getSharedPreferences("settings",0).edit().putString("lat",Double.toString(lat)).putString("lon",Double.toString(lon)).putString("city",city).putString("weather_cache",value).putString("weather_time",LocalDateTime.now().toString()).putLong("weather_updated",System.currentTimeMillis()).apply();try{Forecast.refresh(c);}catch(Exception ignored){}AgendaWidget.refresh(c);return value;
     }
 }

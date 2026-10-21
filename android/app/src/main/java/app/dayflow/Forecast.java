@@ -1,0 +1,13 @@
+package app.dayflow;
+import android.content.*;
+import android.widget.*;
+import org.json.*;
+import java.time.*;
+
+/** A single bounded 16-day forecast cache; distant dates are never fabricated. */
+final class Forecast {
+ static String summary(Context c,LocalDate day){android.content.SharedPreferences p=c.getSharedPreferences("settings",0);try{JSONObject cache=new JSONObject(p.getString("forecast","{}"));if(!cache.optString("lat").equals(p.getString("lat",""))||!cache.optString("lon").equals(p.getString("lon","")))return "位置已变更，需刷新预报";JSONObject daily=cache.getJSONObject("daily");JSONArray dates=daily.getJSONArray("time");for(int i=0;i<dates.length();i++)if(dates.getString(i).equals(day.toString())){int code=daily.getJSONArray("weather_code").getInt(i);String result=sky(code)+" "+Math.round(daily.getJSONArray("temperature_2m_min").getDouble(i))+"–"+Math.round(daily.getJSONArray("temperature_2m_max").getDouble(i))+"℃ · 降水"+daily.getJSONArray("precipitation_probability_max").optInt(i)+"%";if(System.currentTimeMillis()-cache.optLong("updated")>6*3600000L)result+=" · 缓存待刷新";return result;}}catch(Exception ignored){}return day.isBefore(LocalDate.now())?"暂无历史天气":day.isAfter(LocalDate.now().plusDays(15))?"超出预报范围，临近时更新":"尚无预报，点此获取";}
+ static String sky(int code){return code==0?"晴":code<=3?"多云":code<=48?"雾":code<=67?"雨":code<=77?"雪":code<=82?"阵雨":code<=86?"阵雪":"雷雨";}
+ static String refresh(Context c)throws Exception{android.content.SharedPreferences p=c.getSharedPreferences("settings",0);if(p.getString("lat","").isEmpty()||p.getString("lon","").isEmpty())throw new Exception("请先选择天气城市或授权大致位置");double lat=Double.parseDouble(p.getString("lat","")),lon=Double.parseDouble(p.getString("lon",""));if(!Double.isFinite(lat)||!Double.isFinite(lon)||lat< -90||lat>90||lon< -180||lon>180)throw new Exception("无效天气位置");JSONObject response=Network.request("https://api.open-meteo.com/v1/forecast?latitude="+lat+"&longitude="+lon+"&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&forecast_days=16&timezone=auto",null,"");JSONObject cache=new JSONObject().put("daily",response.getJSONObject("daily")).put("lat",p.getString("lat","")).put("lon",p.getString("lon","")).put("updated",System.currentTimeMillis());p.edit().putString("forecast",cache.toString()).apply();return "已更新天气预报 · Open-Meteo";}
+ static void add(MainActivity a,LinearLayout page,LocalDate day,Runnable refresh){page.addView(Ui.button(a,a.prefs.getString("city","天气")+" · "+summary(a,day),false,()->{if(a.prefs.getString("lat","").isEmpty())new SettingsPanels(a).weather();else a.job(()->refresh(a),refresh);}));}
+}

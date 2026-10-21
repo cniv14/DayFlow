@@ -63,6 +63,16 @@ def main():
     taskflow_doc = root / 'docs/TaskFlow-Windows连接协议.md'
     if taskflow_doc.exists():
         shutil.copyfile(taskflow_doc, output / 'TaskFlowProtocol.md')
+    plugin_names = []
+    for abi, name in (('arm64-v8a', 'arm64'), ('armeabi-v7a', 'armv7')):
+        apk = root / 'android/ocrPlugin/build/outputs/apk/release' / f'ocrPlugin-{abi}-release.apk'
+        if not apk.is_file():
+            parser.error(f'Missing optional OCR APK: {apk}; build :ocrPlugin:assembleRelease first.')
+        destination = f'DayFlow-ocr-{name}.apk'
+        shutil.copyfile(apk, output / destination)
+        plugin_names.append(destination)
+    shutil.copyfile(root / 'docs/插件API.md', output / 'PluginAPI.md')
+    plugin_names.append('PluginAPI.md')
     math_included = 'ext-latex' in (root/'android/app/build.gradle').read_text(encoding='utf-8')
     if math_included:
         source = args.math_source or root/'dist/third-party/jlatexmath-android-v0.2.0-source.zip'
@@ -72,7 +82,7 @@ def main():
     names = ('DayFlow-android.apk', 'DayFlow-windows.zip', 'DayFlow-server.zip',
              'android-update.json', 'windows-update.json', 'Testing.md', 'timetable-template.csv')
     checks = []
-    for name in sorted(names + (('ClientSyncAPI.md',) if api_doc.exists() else ()) + (('TaskFlowProtocol.md',) if taskflow_doc.exists() else ()) + (('MathRenderer-source.zip',) if math_included else ())):
+    for name in sorted(names + tuple(plugin_names) + (('ClientSyncAPI.md',) if api_doc.exists() else ()) + (('TaskFlowProtocol.md',) if taskflow_doc.exists() else ()) + (('MathRenderer-source.zip',) if math_included else ())):
         file = output / name
         with file.open('rb') as stream:
             digest = hashlib.file_digest(stream, 'sha256').hexdigest()

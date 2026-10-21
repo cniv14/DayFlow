@@ -8,8 +8,8 @@ android {
         applicationId 'app.dayflow'
         minSdk 26
         targetSdk 36
-        versionCode 111
-        versionName '1.1.1'
+        versionCode 120
+        versionName '1.2.0'
         testInstrumentationRunner 'app.dayflow.SmokeTest'
     }
     compileOptions {
@@ -45,12 +45,18 @@ dependencies {
     implementation 'com.google.android.material:material:1.14.0'
     implementation 'androidx.appcompat:appcompat:1.7.1'
     implementation 'androidx.recyclerview:recyclerview:1.4.0'
-    implementation 'com.kizitonwose.calendar:view:2.6.2'
     implementation 'cn.6tail:lunar:1.7.7'
+    implementation 'org.jsoup:jsoup:1.21.2'
+    implementation 'net.sf.biweekly:biweekly:0.6.8'
+    implementation 'com.vanniktech:android-image-cropper:4.7.0'
+    implementation 'io.noties.markwon:ext-tables:4.6.2'
+    implementation 'io.noties.markwon:ext-latex:4.6.2'
+    implementation 'io.noties.markwon:inline-parser:4.6.2'
+    implementation 'io.noties.markwon:image:4.6.2'
+    implementation 'io.noties.markwon:html:4.6.2'
+    implementation 'io.noties.markwon:linkify:4.6.2'
     implementation 'io.noties.markwon:core:4.6.2'
     implementation 'io.noties.markwon:ext-strikethrough:4.6.2'
     implementation 'io.noties.markwon:ext-tasklist:4.6.2'
-    implementation 'io.noties.markwon:ext-latex:4.6.2'
-    implementation 'io.noties.markwon:inline-parser:4.6.2'
     implementation 'io.github.yahiaangelo.markdownedittext:markdownedittext:1.1.3'
 }

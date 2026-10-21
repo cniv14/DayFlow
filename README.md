@@ -4,9 +4,11 @@
 
 **不注册、不联网、不部署服务器，也能使用本地核心功能。** AI、天气、同步和更新检查均为可选联网能力。
 
-**当前 Android： [1.1.1 APK](https://github.com/cniv14/DayFlow/releases/download/v1.1.1/DayFlow-android.apk)** · [发布页](https://github.com/cniv14/DayFlow/releases/tag/v1.1.1) · [1.1.1 使用说明](docs/Android-1.1.1.md)
+**当前 Android： [1.2.0 APK](https://github.com/cniv14/DayFlow/releases/download/v1.2.0/DayFlow-android.apk)** · [发布页](https://github.com/cniv14/DayFlow/releases/tag/v1.2.0) · [使用说明](docs/Android-1.2.0.md)
 
-1.1.1修正月历/日期选择入口及按钮、底部导航布局，增加AI截图课表校正导入、可选结束与持续时间、提前通知/响铃、指定群聊通知收集及小组件待确认入口。
+1.2.0增加天气周预览、月历日程与调休黄历、长按提前/延后、短信取件码/话费收集、项目打卡和看板、专注计时、原生截图裁剪、网页/HTML/重复ICS导入。修正应用壁纸取色，底部导航透明且只显示主题图标。Markdown保留公式渲染并扩展表格、图片、脚注和字号，默认文件名为日期。
+
+可选离线OCR独立安装：[arm64](https://github.com/cniv14/DayFlow/releases/download/v1.2.0/DayFlow-ocr-arm64.apk) / [armv7](https://github.com/cniv14/DayFlow/releases/download/v1.2.0/DayFlow-ocr-armv7.apk)，通常现代手机选arm64。无需OCR时只安装主包。见[插件API](docs/插件API.md)与[同步API](docs/客户端同步API.md)。
 
 按要求已依次提供0.5.0、1.0.0和1.1.0三个发布阶段：任务管理补齐、连接现有TaskFlow Windows、操作与资源完善。Windows源码不修改。所有新版均只编译打包，实际连接与交互由用户实测。
 
@@ -27,7 +29,7 @@
 
 安装包及操作步骤见 [测试说明](docs/测试说明.md)。
 
-Android 0.5.0 增加长任务进度、三级类型、截止日期、全局搜索与重复实例管理；移除顶栏、保留失败登录输入、改善连接提示，并支持 AI 下拉详细配置、Markdown 撤销／公式与系统 .md 打开，见 [新版使用说明](docs/Android-0.5.0.md)。今天首页与统一待办操作见 [0.3.0说明](docs/Android-0.3.0.md)。复用 MIT 项目 Calendar View 与 lunar-java，并使用 Apache 2.0 的 Markwon 原生笔记渲染。Android 最低支持8.0；本次只更新 Android 与服务端；Windows 不修改。TaskFlow 参考功能对照见 [功能对照](docs/TaskFlow功能对照.md)，Android 1.0.0 已加入该 Windows 端的连接适配代码，见 [连接说明](docs/Android-1.0.0.md) 与 [适配协议](docs/TaskFlow-Windows连接协议.md)。Windows 不修改；双机效果按用户要求由用户实测。
+Android 0.5.0 增加长任务进度、三级类型、截止日期、全局搜索与重复实例管理；移除顶栏、保留失败登录输入、改善连接提示，并支持 AI 下拉详细配置、Markdown 撤销／公式与系统 .md 打开，见 [新版使用说明](docs/Android-0.5.0.md)。今天首页与统一待办操作见 [0.3.0说明](docs/Android-0.3.0.md)。复用 MIT 项目 lunar-java、jsoup与holiday-cn（旧版Calendar View已移除），并使用 Apache 2.0 的 Markwon 原生笔记渲染。Android 最低支持8.0；本次只更新 Android 与服务端；Windows 不修改。TaskFlow 参考功能对照见 [功能对照](docs/TaskFlow功能对照.md)，Android 1.0.0 已加入该 Windows 端的连接适配代码，见 [连接说明](docs/Android-1.0.0.md) 与 [适配协议](docs/TaskFlow-Windows连接协议.md)。Windows 不修改；双机效果按用户要求由用户实测。
 
 ## 项目结构
 
@@ -50,6 +52,8 @@ Android 使用 JDK 17、Gradle 9.6.1、Android SDK 36，Android Gradle Plugin 9.
 ```powershell
 cd android
 gradle :app:assembleDebug
+# 可选OCR插件先在仓库根目录运行 python tools/fetch_ocr.py，再执行：
+# gradle :ocrPlugin:assembleRelease
 ```
 
 正式 APK 需要稳定签名。维护者先执行 `python tools/release_keys.py`（仅构建时需 `cryptography`），在本机 `.signing/` 生成 Android 证书与更新签名私钥。**请离线备份此目录；丢失证书将无法为已安装版本提供兼容更新。** 对本项目进行 fork 时应生成自己的密钥、公钥和应用 ID。
@@ -85,9 +89,9 @@ Windows 打包必须把 `DayFlow.Updater.*` 与 `DayFlow.Widget.*` 一起放到�
 ## 当前限制
 
 - 通知通过系统通知访问授权采集；应用隐藏的内容、未发到通知栏的聊天、历史聊天不能保证读取。Shizuku 增强尚未接入。
-- 截图使用用户选择的视觉 AI 接口；没有内置端侧 OCR。邮件目前通过邮件应用通知、粘贴正文或系统分享导入，没有 IMAP 邮箱抓取。
-- 课表先支持标准 CSV 与基础 ICS，不含各学校教务系统登录适配。图片自动压缩，不保留原图。
-- 万年历使用 lunar-java 离线显示农历、节气与传统节日，天气按需刷新并缓存；界面尚未提供调休班表、宜忌或学校校历。
+- 截图支持用户选择的视觉 AI 接口及可选独立离线OCR插件；模型不计入主包。邮件目前通过邮件应用通知、粘贴正文或系统分享导入，没有 IMAP 邮箱抓取。
+- 课表支持CSV、经确认的AI截图、标准HTML表格与有界重复ICS导入，不含各学校教务系统登录适配。图片自动压缩，不保留原图。
+- 万年历使用 lunar-java 离线显示农历、节气与传统节日，天气按需刷新并缓存；1.2.0提供调休标记及宜忌二级页面；不包含各学校校历。
 - 左下角右滑目前为应用内手势；全局悬浮手势尚未接入。
 - Android 的普通通知提醒受系统省电策略影响，当前安排最近100个可提醒事项；系统闹钟接口只传时分，不能表达任意未来日期。系统日历通过确认页面导出，重复导出可能产生重复项，目前没有双向日历同步。
 - 日期查询最多500条落库事项及总计1000条展开结果；表格每页30项，提醒与子任务每页40项，全局搜索每页60项。笔记查询最多200条，大附件管理待完善。
