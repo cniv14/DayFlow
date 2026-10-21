@@ -11,7 +11,7 @@ public final class ChineseDates {
     public static Lunar lunar(LocalDate date){return Solar.fromYmd(date.getYear(),date.getMonthValue(),date.getDayOfMonth()).getLunar();}
     public static synchronized String label(LocalDate date){
         String cached=labels.get(date);if(cached!=null)return cached;
-        Lunar lunar=lunar(date);String value=lunar.getJieQi();
+        Lunar lunar=lunar(date);String value=lunar.getJieQi();if(value==null)value="";
         if(value.isEmpty()&&!lunar.getFestivals().isEmpty())value=lunar.getFestivals().get(0);
         if(value.isEmpty())value=lunar.getDay()==1?lunar.getMonthInChinese()+"月":lunar.getDayInChinese();
         labels.put(date,value);return value;

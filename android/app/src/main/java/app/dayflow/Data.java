@@ -15,7 +15,7 @@ public final class Data extends SQLiteOpenHelper {
         if (instance == null) instance = new Data(c.getApplicationContext());
         return instance;
     }
-    private final Context context;
+    private final Context context;private boolean batchWrite;
     private Data(Context c) { super(c, "dayflow.db", null, 4); context=c;setWriteAheadLoggingEnabled(true); }
     public void onCreate(SQLiteDatabase db) {
         db.execSQL("CREATE TABLE records(id TEXT PRIMARY KEY,kind TEXT,title TEXT,start_at TEXT,deleted INTEGER,dirty INTEGER,version INTEGER DEFAULT 0,body TEXT,updated_at TEXT DEFAULT '',completed TEXT DEFAULT '',end_at TEXT DEFAULT '',due_date TEXT DEFAULT '',parent_id TEXT DEFAULT '',type_id TEXT DEFAULT '',recurrence TEXT DEFAULT '')");
@@ -75,6 +75,8 @@ public final class Data extends SQLiteOpenHelper {
         if(!r.optString("parent_id").isEmpty())UUID.fromString(r.getString("parent_id"));
         if(!r.optString("type_id").isEmpty())UUID.fromString(r.getString("type_id"));
     }
+    public synchronized int importNew(JSONArray rows)throws Exception{for(int i=0;i<rows.length();i++){JSONObject r=rows.getJSONObject(i);validate(r);if(!r.optString("kind").equals("course"))throw new Exception("只能批量创建课程");}SQLiteDatabase db=getWritableDatabase();int added=0;db.beginTransaction();batchWrite=true;try{for(int i=0;i<rows.length();i++){JSONObject r=rows.getJSONObject(i);if(find(r.getString("id"))!=null)continue;save(r);added++;}db.setTransactionSuccessful();}finally{batchWrite=false;db.endTransaction();}if(added>0)SyncJob.request(context);return added;}
+    public synchronized int inboxCount(){try(Cursor c=getReadableDatabase().rawQuery("SELECT COUNT(*) FROM records WHERE deleted=0 AND kind='inbox'",null)){return c.moveToFirst()?c.getInt(0):0;}}
     public synchronized JSONObject find(String id) throws JSONException {
         try(Cursor c=getReadableDatabase().rawQuery("SELECT body FROM records WHERE id=?",new String[]{id})) {
             return c.moveToFirst()?new JSONObject(c.getString(0)):null;
@@ -87,7 +89,7 @@ public final class Data extends SQLiteOpenHelper {
         v.put("updated_at",r.optString("updated_at"));v.put("completed",r.optString("completed"));v.put("end_at",endIndex(r));v.put("due_date",r.optString("due_date"));v.put("parent_id",r.optString("parent_id"));v.put("type_id",r.optString("type_id"));v.put("recurrence",Recurrences.series(r)?r.optString("recurrence"):"");
         getWritableDatabase().insertWithOnConflict("records",null,v,SQLiteDatabase.CONFLICT_REPLACE);
         try{MarkdownFiles.update(context,r);}catch(java.io.IOException e){throw new JSONException("记录已保存，但 .md 文件写入失败："+e.getMessage());}
-        if(dirty)SyncJob.request(context);
+        if(dirty&&!batchWrite)SyncJob.request(context);
     }
     private static String endIndex(JSONObject r){if(!r.optString("end_at").isEmpty())return r.optString("end_at");return r.optString("start_at").isEmpty()?"":LocalDateTime.parse(r.optString("start_at")).plusHours(1).toString();}
     private long version(String id) {

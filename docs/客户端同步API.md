@@ -334,3 +334,23 @@ Android 提供 DeepSeek、通义千问／视觉、Kimi、OpenAI 与自定义预�
 系列修改应用于未覆盖的实例，已覆盖实例保持自己的字段。删除／取消／完成整个系列时 Android 日历隐藏其覆盖实例。每月同日遇到无该日期的月份跳过，不移动到月末。日程时刻沿用本地无时区 ISO 约定。
 
 AI 扩展 items 字段：kind（event/task/project）、due_date、all_day、recurrence、weekdays、recurrence_until、reminder、remind_minutes、type_hint。识别结果仍是 inbox，拟定行为存在 proposed_kind，需用户确认；API Key 不进入这些记录。
+
+
+## Android 1.1.1：时间、响铃与群来源字段
+
+协议仍为v1，不新增服务路由。以下均在完整record中传输，未知字段应保留：
+
+| 字段 | 含义 |
+| --- | --- |
+| time_mode | start / duration / end；编辑展示偏好。实际时刻仍由start_at、end_at决定 |
+| end_at | 可为空，表示未指定结束；duration模式将时长换算为end_at存储 |
+| reminder_mode | notification / alarm / both；缺省notification，各客户端本地调度 |
+| reminder_offsets | 逗号分隔提前分钟，0准时，最多5个，0–525600；可接受中文逗号 |
+| source_group | 通知中匹配到的群名称，可空 |
+| confirmation_status | pending待确认 / confirmed已确认；inbox类型本身也是待确认状态 |
+
+群名白名单、应用通知授权、精确闹钟授权、小组件隐私开关不随记录同步。截图识别课表确认后生成普通kind=course记录，不新增同步消息类型，仍走mutations/changes与文件合并。
+
+TaskFlow适配的无结束时间事项以endAt=null传输；新增展示与提醒方式字段保留在attributesJson.dayflow。Windows通知channel保持其已有协议，Android闹钟方式由扩展字段控制，避免修改Windows实现。
+
+AI课表是客户端直接访问用户模型接口，输入image_url与补充文字，输出courses数组；经过编辑确认再转成课程记录。不经过同步服务器，也不上传API Key。

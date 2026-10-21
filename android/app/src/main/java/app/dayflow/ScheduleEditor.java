@@ -29,7 +29,7 @@ public final class ScheduleEditor {
             if(offset>0)form.addView(Ui.button(a,"上一页",false,()->{if(save(false))new ScheduleEditor(a,day,courses,Math.max(0,offset-30));}));
             if(end<rows.length())form.addView(Ui.button(a,"下一页（每页30项）",false,()->{if(save(false))new ScheduleEditor(a,day,courses,offset+30);}));
         }catch(Exception e){a.message(e.getMessage());}
-        form.addView(Ui.button(a,"＋ 新建"+(courses?"课程":"事项"),true,()->{if(save(false))a.newRecord(courses?"course":"event");}));if(courses)form.addView(Ui.button(a,"导入课表 CSV / ICS",false,()->{if(save(false))a.pickFile(103,"*/*");}));else form.addView(Ui.button(a,"管理全部待办与时间待定",false,()->{if(save(false))a.tasks();}));
+        form.addView(Ui.button(a,"＋ 新建"+(courses?"课程":"事项"),true,()->{if(save(false))a.newRecord(courses?"course":"event");}));if(courses)form.addView(Ui.button(a,"AI 截图识别课表",false,()->{if(save(false))a.pickFile(110,"image/*");}));if(courses)form.addView(Ui.button(a,"导入课表 CSV / ICS",false,()->{if(save(false))a.pickFile(103,"*/*");}));else form.addView(Ui.button(a,"管理全部待办与时间待定",false,()->{if(save(false))a.tasks();}));
         form.addView(Ui.button(a,"保存表格修改",false,()->save(true)));
     }
     private void go(LocalDate date){if(save(false))show(a,date,courses);}

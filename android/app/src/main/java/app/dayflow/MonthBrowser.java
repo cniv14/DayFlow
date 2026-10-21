@@ -1,43 +1,34 @@
 package app.dayflow;
-
-import android.graphics.drawable.GradientDrawable;
-import android.view.*;
+import android.view.Gravity;
 import android.widget.*;
-import com.kizitonwose.calendar.core.*;
-import com.kizitonwose.calendar.view.*;
+import android.graphics.drawable.GradientDrawable;
 import java.time.*;
 import java.util.*;
 import java.util.function.Consumer;
 import org.json.*;
-
-/** RecyclerView-based month browsing delegates paging and cell recycling to Calendar. */
+/** Bounded native grid shared by month browsing and date selection. */
 public final class MonthBrowser {
-    private static final class DayCell extends ViewContainer {
-        final View root;final TextView number,lunar,marker;
-        DayCell(View view){super(view);root=view;number=view.findViewById(R.id.day_number);lunar=view.findViewById(R.id.day_lunar);marker=view.findViewById(R.id.day_marker);}
-    }
-    public static void show(MainActivity a,LocalDate initial,Consumer<LocalDate> choose){
-        LinearLayout page=a.fullPage("月历与农历",a::home);
-        TextView title=Ui.text(a,"",23,true);page.addView(title);
-        TextView info=Ui.help(a,ChineseDates.description(initial));page.addView(info);
-        LinearLayout weekdays=Ui.row(a);for(String name:new String[]{"一","二","三","四","五","六","日"}){TextView t=Ui.help(a,name);t.setGravity(Gravity.CENTER);weekdays.addView(t,new LinearLayout.LayoutParams(0,-2,1));}page.addView(weekdays);
-        com.kizitonwose.calendar.view.CalendarView calendar=new com.kizitonwose.calendar.view.CalendarView(a,null);calendar.setDayViewResource(R.layout.calendar_day);calendar.setScrollPaged(true);calendar.setItemAnimator(null);calendar.setNestedScrollingEnabled(false);
-        LocalDate[] selected={initial};YearMonth[] visible={YearMonth.from(initial)};Map<LocalDate,Integer> counts=new HashMap<>();
-        Runnable load=()->{counts.clear();try{LocalDate from=visible[0].atDay(1).minusDays(7);JSONArray rows=Data.get(a).range(from,visible[0].plusMonths(1).atDay(1).plusDays(7),false);for(int i=0;i<rows.length();i++){JSONObject row=rows.getJSONObject(i);LocalDate date=PlanTime.start(row).toLocalDate();counts.put(date,counts.getOrDefault(date,0)+1);}}catch(Exception e){a.message("读取日期安排失败："+e.getMessage());}};
-        calendar.setDayBinder(new MonthDayBinder<DayCell>(){
-            public DayCell create(View view){return new DayCell(view);}
-            public void bind(DayCell cell,CalendarDay day){LocalDate date=day.getDate();boolean active=day.getPosition()==DayPosition.MonthDate,chosen=date.equals(selected[0]);int ink=chosen?Ui.color(a,com.google.android.material.R.attr.colorOnPrimaryContainer):active?Ui.ink(a):Ui.muted(a);
-                cell.number.setText(String.valueOf(date.getDayOfMonth()));cell.number.setTextColor(ink);cell.lunar.setText(ChineseDates.label(date));cell.lunar.setTextColor(ink);int count=counts.getOrDefault(date,0);cell.marker.setText(count>0?"• "+count:" ");cell.marker.setTextColor(chosen?ink:Ui.primary(a));cell.root.setAlpha(active?1f:.45f);
-                GradientDrawable bg=new GradientDrawable();bg.setCornerRadius(Ui.dp(a,12));bg.setColor(chosen?Ui.color(a,com.google.android.material.R.attr.colorPrimaryContainer):android.graphics.Color.TRANSPARENT);if(date.equals(LocalDate.now()))bg.setStroke(Ui.dp(a,1),Ui.primary(a));cell.root.setBackground(bg);cell.root.setContentDescription(date+"，"+ChineseDates.label(date)+"，"+count+"项待办");
-                cell.root.setOnClickListener(v->{selected[0]=date;info.setText(ChineseDates.description(date));calendar.notifyCalendarChanged();});
-            }
-        });
-        calendar.setMonthScrollListener(month->{visible[0]=month.getYearMonth();title.setText(visible[0].getYear()+"年 "+visible[0].getMonthValue()+"月");load.run();calendar.post(calendar::notifyCalendarChanged);return kotlin.Unit.INSTANCE;});
-        YearMonth center=YearMonth.now();calendar.setup(center.minusYears(10),center.plusYears(10),DayOfWeek.MONDAY);load.run();calendar.scrollToMonth(YearMonth.from(initial));
-        page.addView(calendar,new LinearLayout.LayoutParams(-1,-2));
-        page.addView(Ui.button(a,"打印本月 / 保存 PDF",false,()->CalendarPrint.show(a,visible[0].atDay(1),visible[0].plusMonths(1).atDay(1))));
-        page.addView(Ui.help(a,"左右滑动切换月份 · 圆点数字为未完成安排（含课程）"));
-        page.addView(Ui.button(a,"选择这个日期",true,()->choose.accept(selected[0])));
-        page.addView(Ui.button(a,"回到今天",false,()->{selected[0]=LocalDate.now();calendar.scrollToMonth(YearMonth.now());calendar.notifyCalendarChanged();info.setText(ChineseDates.description(selected[0]));}));
-    }
+ public static void show(MainActivity a,LocalDate initial,Consumer<LocalDate> choose){select(a,initial,choose,a::home,true);}
+ public static void select(MainActivity a,LocalDate initial,Consumer<LocalDate> choose,Runnable back,boolean appointments){
+  LinearLayout page=a.fullPage("选择日期",back);LocalDate safe=initial.getYear()<1901?LocalDate.of(1901,1,1):initial.getYear()>2099?LocalDate.of(2099,12,31):initial;LocalDate[] selected={safe};YearMonth[] visible={YearMonth.from(safe)};
+  LinearLayout nav=Ui.row(a);page.addView(nav);TextView title=Ui.text(a,"",18,true);title.setGravity(Gravity.CENTER);
+  LinearLayout jump=Ui.row(a);page.addView(jump);NumberPicker year=new NumberPicker(a),month=new NumberPicker(a);
+  year.setMinValue(1901);year.setMaxValue(2099);year.setValue(Math.max(1901,Math.min(2099,initial.getYear())));month.setMinValue(1);month.setMaxValue(12);month.setValue(initial.getMonthValue());year.setContentDescription("年份");month.setContentDescription("月份");
+  jump.addView(year,new LinearLayout.LayoutParams(0,Ui.dp(a,110),1));jump.addView(month,new LinearLayout.LayoutParams(0,Ui.dp(a,110),1));
+  TextView info=Ui.help(a,"");page.addView(info);LinearLayout grid=Ui.column(a);page.addView(grid);Runnable[] render={null};boolean[] updating={false};
+  render[0]=()->{updating[0]=true;year.setValue(visible[0].getYear());month.setValue(visible[0].getMonthValue());updating[0]=false;
+   title.setText(visible[0].getYear()+"年 "+visible[0].getMonthValue()+"月");info.setText(selected[0]+" · "+ChineseDates.description(selected[0]));grid.removeAllViews();
+   Map<LocalDate,Integer> counts=new HashMap<>();if(appointments)try{JSONArray rows=Data.get(a).range(visible[0].atDay(1),visible[0].plusMonths(1).atDay(1),false);for(int i=0;i<rows.length();i++){LocalDateTime at=PlanTime.start(rows.getJSONObject(i));if(at!=null)counts.put(at.toLocalDate(),counts.getOrDefault(at.toLocalDate(),0)+1);}}catch(Exception e){a.message("读取安排失败："+e.getMessage());}
+   LinearLayout header=Ui.row(a);for(String day:new String[]{"一","二","三","四","五","六","日"}){TextView label=Ui.help(a,day);label.setGravity(Gravity.CENTER);header.addView(label,new LinearLayout.LayoutParams(0,-2,1));}grid.addView(header);
+   LocalDate first=visible[0].atDay(1);int offset=first.getDayOfWeek().getValue()-1;
+   for(int row=0;row<6;row++){LinearLayout line=Ui.row(a);grid.addView(line);for(int col=0;col<7;col++){
+    int number=row*7+col-offset+1;LinearLayout cell=Ui.column(a);cell.setGravity(Gravity.CENTER);cell.setMinimumHeight(Ui.dp(a,56));line.addView(cell,new LinearLayout.LayoutParams(0,-2,1));if(number<1||number>visible[0].lengthOfMonth())continue;
+    LocalDate date=visible[0].atDay(number);boolean active=date.equals(selected[0]);TextView day=Ui.text(a,String.valueOf(number),16,active);cell.addView(day);TextView lunar=Ui.text(a,ChineseDates.label(date),9,false);lunar.setSingleLine();lunar.setEllipsize(android.text.TextUtils.TruncateAt.END);cell.addView(lunar);if(counts.containsKey(date))cell.addView(Ui.text(a,"• "+counts.get(date),9,false));
+    GradientDrawable bg=new GradientDrawable();bg.setCornerRadius(Ui.dp(a,10));bg.setColor(active?Ui.color(a,com.google.android.material.R.attr.colorPrimaryContainer):android.graphics.Color.TRANSPARENT);if(date.equals(LocalDate.now()))bg.setStroke(Ui.dp(a,1),Ui.primary(a));cell.setBackground(bg);cell.setContentDescription(date+"，"+ChineseDates.label(date));cell.setOnClickListener(v->{selected[0]=date;render[0].run();});
+   }}
+  };
+  nav.addView(Ui.button(a,"‹",false,()->{if(visible[0].isAfter(YearMonth.of(1901,1))){visible[0]=visible[0].minusMonths(1);render[0].run();}}),new LinearLayout.LayoutParams(Ui.dp(a,48),-2));nav.addView(title,new LinearLayout.LayoutParams(0,-2,1));nav.addView(Ui.button(a,"›",false,()->{if(visible[0].isBefore(YearMonth.of(2099,12))){visible[0]=visible[0].plusMonths(1);render[0].run();}}),new LinearLayout.LayoutParams(Ui.dp(a,48),-2));
+  NumberPicker.OnValueChangeListener changed=(picker,old,value)->{if(!updating[0]){visible[0]=YearMonth.of(year.getValue(),month.getValue());render[0].run();}};year.setOnValueChangedListener(changed);month.setOnValueChangedListener(changed);
+  page.addView(Ui.button(a,"确定 · 使用选中日期",true,()->choose.accept(selected[0])));page.addView(Ui.button(a,"今天",false,()->{selected[0]=LocalDate.now();visible[0]=YearMonth.now();render[0].run();}));if(appointments)page.addView(Ui.button(a,"打印本月 / 保存 PDF",false,()->CalendarPrint.show(a,visible[0].atDay(1),visible[0].plusMonths(1).atDay(1))));render[0].run();
+ }
 }

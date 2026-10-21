@@ -4,7 +4,9 @@
 
 **不注册、不联网、不部署服务器，也能使用本地核心功能。** AI、天气、同步和更新检查均为可选联网能力。
 
-**当前 Android： [1.1.0 APK](https://github.com/cniv14/DayFlow/releases/download/v1.1.0/DayFlow-android.apk)** · [发布页](https://github.com/cniv14/DayFlow/releases/tag/v1.1.0) · [1.1.0 使用说明](docs/Android-1.1.0.md)
+**当前 Android： [1.1.1 APK](https://github.com/cniv14/DayFlow/releases/download/v1.1.1/DayFlow-android.apk)** · [发布页](https://github.com/cniv14/DayFlow/releases/tag/v1.1.1) · [1.1.1 使用说明](docs/Android-1.1.1.md)
+
+1.1.1修正月历/日期选择入口及按钮、底部导航布局，增加AI截图课表校正导入、可选结束与持续时间、提前通知/响铃、指定群聊通知收集及小组件待确认入口。
 
 按要求已依次提供0.5.0、1.0.0和1.1.0三个发布阶段：任务管理补齐、连接现有TaskFlow Windows、操作与资源完善。Windows源码不修改。所有新版均只编译打包，实际连接与交互由用户实测。
 
