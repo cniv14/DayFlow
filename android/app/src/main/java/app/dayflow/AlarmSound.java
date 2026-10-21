@@ -12,9 +12,10 @@ import org.json.JSONObject;
 
 /** A short-lived foreground service exists only while a user-requested alarm rings. */
 public final class AlarmSound extends Service {
-    private MediaPlayer player;private AudioManager audio;private AudioFocusRequest focus;
+    private MediaPlayer player;private AudioManager audio;private AudioFocusRequest focus;private ToneGenerator tone;
     private final Handler handler=new Handler(Looper.getMainLooper());
     private final Runnable timeout=()->stopSelf();
+    private final Runnable beep=new Runnable(){public void run(){if(tone!=null)tone.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD,800);handler.postDelayed(this,1600);}};
     public static boolean exact(Context c){return Build.VERSION.SDK_INT<31||((AlarmManager)c.getSystemService(ALARM_SERVICE)).canScheduleExactAlarms();}
     public static void permissions(MainActivity a){
         JSONObject draft=a.editorState==null?null:a.editorState.draft();Runnable back=()->{if(draft==null)a.home();else a.edit(draft);};LinearLayout page=a.fullPage("提醒权限",back);
@@ -35,11 +36,12 @@ public final class AlarmSound extends Service {
             Notification notification=new Notification.Builder(this,"alarm_playback").setSmallIcon(R.drawable.ic_notification).setContentTitle(r.optString("title")).setContentText(PlanTime.label(r)+" · 点停止结束响铃").setCategory(Notification.CATEGORY_ALARM).setContentIntent(open).setOngoing(true).addAction(new Notification.Action.Builder(null,"停止响铃",stop).build()).build();
             if(Build.VERSION.SDK_INT>=29)startForeground(711,notification,ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK);else startForeground(711,notification);
             release();AudioAttributes attributes=new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build();audio=getSystemService(AudioManager.class);focus=new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT).setAudioAttributes(attributes).setOnAudioFocusChangeListener(change->{if(change==AudioManager.AUDIOFOCUS_LOSS)stopSelf();}).build();
-            if(audio.requestAudioFocus(focus)==AudioManager.AUDIOFOCUS_REQUEST_GRANTED){Uri sound=RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);if(sound==null)sound=RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);player=new MediaPlayer();player.setAudioAttributes(attributes);player.setWakeMode(this,PowerManager.PARTIAL_WAKE_LOCK);player.setDataSource(this,sound);player.setLooping(true);player.setOnErrorListener((mp,what,extra)->{stopSelf();return true;});player.setOnPreparedListener(MediaPlayer::start);player.prepareAsync();}
+            if(audio.requestAudioFocus(focus)==AudioManager.AUDIOFOCUS_REQUEST_GRANTED){Uri sound=RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);if(sound==null)sound=RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);try{player=new MediaPlayer();player.setAudioAttributes(attributes);player.setWakeMode(this,PowerManager.PARTIAL_WAKE_LOCK);player.setDataSource(this,sound);player.setLooping(true);player.setOnErrorListener((mp,what,extra)->{startFallbackTone();return true;});player.setOnPreparedListener(MediaPlayer::start);player.prepareAsync();}catch(Exception soundError){startFallbackTone();}}
             handler.removeCallbacks(timeout);handler.postDelayed(timeout,120000);
         }catch(Exception e){stopSelf();}
         return START_NOT_STICKY;
     }
-    private void release(){if(player!=null){player.release();player=null;}if(audio!=null&&focus!=null){audio.abandonAudioFocusRequest(focus);focus=null;}}
+    private void startFallbackTone(){try{if(player!=null){player.release();player=null;}if(tone==null)tone=new ToneGenerator(AudioManager.STREAM_ALARM,100);handler.removeCallbacks(beep);handler.post(beep);}catch(Exception ignored){}}
+    private void release(){handler.removeCallbacks(beep);if(tone!=null){tone.stopTone();tone.release();tone=null;}if(player!=null){player.release();player=null;}if(audio!=null&&focus!=null){audio.abandonAudioFocusRequest(focus);focus=null;}}
     public void onDestroy(){handler.removeCallbacksAndMessages(null);release();stopForeground(STOP_FOREGROUND_REMOVE);super.onDestroy();}
 }

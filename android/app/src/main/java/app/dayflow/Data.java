@@ -123,8 +123,8 @@ public final class Data extends SQLiteOpenHelper {
     public synchronized JSONArray range(LocalDate from,LocalDate to,boolean courses)throws JSONException{return calendarRows(from,to,courses,false);}
     private JSONArray calendarRows(LocalDate from,LocalDate to,boolean courses,boolean includeDone)throws JSONException{
         List<JSONObject> output=new ArrayList<>();String kinds=courses?"kind='course'":"kind IN ('task','event','course','project')";
-        String sql="SELECT preview AS body FROM records WHERE deleted=0 AND "+kinds+" AND recurrence='' AND ((start_at<? AND end_at>?) OR (start_at='' AND due_date>=? AND due_date<?)) ORDER BY start_at LIMIT 500";
-        try(Cursor cursor=getReadableDatabase().rawQuery(sql,new String[]{to.atStartOfDay().toString(),from.atStartOfDay().toString(),from.toString(),to.toString()})){
+        String sql="SELECT preview AS body FROM records WHERE deleted=0 AND "+kinds+" AND recurrence='' AND ((start_at<>'' AND end_at<>'' AND start_at<? AND end_at>?) OR (start_at<>'' AND end_at='' AND start_at<? AND start_at>=?) OR (start_at='' AND due_date>=? AND due_date<?)) ORDER BY start_at LIMIT 500";
+        try(Cursor cursor=getReadableDatabase().rawQuery(sql,new String[]{to.atStartOfDay().toString(),from.atStartOfDay().toString(),to.atStartOfDay().toString(),from.atStartOfDay().toString(),from.toString(),to.toString()})){
             while(cursor.moveToNext()){JSONObject r=new JSONObject(cursor.getString(0));if(!r.optString("series_id").isEmpty()){JSONObject template=find(r.optString("series_id"));if(template!=null&&(template.optBoolean("deleted")||PlanTime.cancelled(template)||!template.optString("completed").isEmpty()))continue;}if(!PlanTime.cancelled(r)&&(includeDone||r.optString("completed").isEmpty()))output.add(r);}
         }
         try(Cursor cursor=getReadableDatabase().rawQuery("SELECT preview AS body FROM records WHERE deleted=0 AND "+kinds+" AND recurrence<>'' ORDER BY start_at LIMIT 500",null)){
