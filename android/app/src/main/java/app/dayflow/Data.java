@@ -109,6 +109,9 @@ public final class Data extends SQLiteOpenHelper {
         }
         r.put("updated_at",Instant.now().toString());put(r,true,version(r.getString("id")));
     }
+    public synchronized JSONArray inboxPage(int offset) throws JSONException {
+        JSONArray rows=new JSONArray();try(Cursor c=getReadableDatabase().rawQuery("SELECT preview FROM records WHERE deleted=0 AND kind='inbox' ORDER BY updated_at DESC,id LIMIT 50 OFFSET ?",new String[]{Integer.toString(Math.max(0,offset))})){while(c.moveToNext())rows.put(new JSONObject(c.getString(0)));}return rows;
+    }
     public synchronized JSONArray list(String kind,int limit) throws JSONException {
         JSONArray rows=new JSONArray();String sql="SELECT preview AS body FROM records WHERE deleted=0";
         String[] args=null;

@@ -12,7 +12,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
-    <queries><intent><action android:name="app.dayflow.action.EXTENSION" /></intent></queries>
+    <queries><intent><action android:name="app.dayflow.action.EXTENSION" /></intent><intent><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent></queries>
     <application android:name=".DayFlowApp" android:label="日栖 DayFlow" android:theme="@style/Theme.DayFlow"
         android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher" android:allowBackup="false" android:supportsRtl="true"
         android:usesCleartextTraffic="true">
@@ -36,7 +36,7 @@
                 <data android:mimeType="text/markdown" /><data android:mimeType="text/x-markdown" />
             </intent-filter>
         </activity>
-        <provider android:name=".ApiProvider" android:authorities="app.dayflow.api" android:exported="true" />
+        <provider android:name=".PluginProvider" android:authorities="app.dayflow.api" android:exported="true" android:permission="app.dayflow.permission.INTERNAL" />
         <receiver android:name=".FocusTimer" android:exported="false" />
         <provider android:name="androidx.core.content.FileProvider" android:authorities="app.dayflow.files" android:exported="false" android:grantUriPermissions="true"><meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/shared_images" /></provider>
         <receiver android:name=".SmsCapture" android:permission="android.permission.BROADCAST_SMS" android:exported="true"><intent-filter><action android:name="android.provider.Telephony.SMS_RECEIVED" /></intent-filter></receiver>

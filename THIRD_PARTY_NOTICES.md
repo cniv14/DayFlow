@@ -1,5 +1,7 @@
 # Third-party components
 
+- RE2/J 1.8, https://github.com/google/re2j — linear-time notification regex filtering. Upstream Go/BSD license and additional notices are bundled verbatim as `licenses/RE2J-LICENSE.txt`. DayFlow original source remains MIT.
+
 DayFlow's original source code is licensed under MIT. Dependency licenses remain applicable to those dependencies.
 
 Android 1.2.0 core and optional plugins use the following components; Markdown/Markwon/JLaTeXMath are distributed in the optional Markdown APK, not the core APK:

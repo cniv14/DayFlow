@@ -1,10 +1,10 @@
 # Android插件API v1
 
-插件是用户单独安装的Android APK，通过Activity Intent通信，不是动态dex、脚本注入或网络服务。主应用不向插件传递账号、Key、完整数据库或同步令牌；正式数据仍使用客户端同步API.md。
+插件是用户单独安装的Android APK，通过Activity Intent通信，不是动态dex、脚本注入或网络服务。主应用不向插件传递账号、AI Key、完整数据库或同步令牌；正式数据仍使用客户端同步API.md。
 
 ## 发现和打开
 
-插件Activity声明exported=true，Intent filter包含action `app.dayflow.action.EXTENSION`与category `android.intent.category.DEFAULT`。主应用queryIntentActivities发现后按包名记录启用状态；首次安装默认启用，但必须由用户打开。请求使用显式ComponentName及整数extra `dayflow_protocol=1`，startActivityForResult请求码114。非同签名插件会显示来源确认页，主程序不为第三方签名背书。
+插件Activity声明exported=true，Intent filter包含action `app.dayflow.action.EXTENSION`与category `android.intent.category.DEFAULT`。主应用queryIntentActivities发现后按包名记录启用状态；首次安装默认启用，用户在主应用使用相应功能时直接调用；完整Markdown可自动接管笔记编辑。请求使用显式ComponentName及整数extra `dayflow_protocol=1`，startActivityForResult请求码114。非同签名插件会显示来源确认页，主程序不为第三方签名背书。
 
 插件用setResult(RESULT_OK, intent)后finish。RESULT_CANCELED无导入；错误可返回字符串extra `dayflow_error`。返回以下一种数据：
 
@@ -32,10 +32,14 @@
 
 ## 独立Markdown、黄历与助手插件
 
-- app.dayflow.markdown：action app.dayflow.action.MARKDOWN，主程序显式启动，protocol=1。本次文档FileProvider URI以data/ClipData提供读写授权，额外传dayflow_id、dayflow_revision、dayflow_title、dayflow_seed及随机dayflow_document_token。只共享一篇文档，不传整库/云端令牌。主程序保存临时文件与会话，异常退出后可恢复副本。用户保存时，插件计算完整文件SHA-256，用同签名INTERNAL权限调用commit_document；本体验证授权令牌/摘要/当前修订，进入同步队列，冲突时创建副本。返回结果带dayflow_title/dayflow_sha256，主程序再次核对并撤销授权。完整MD与公式依赖只在这个APK内，底部格式工具栏删除，所有格式工具位于顶部。
+- app.dayflow.markdown：action app.dayflow.action.MARKDOWN，主程序显式启动，protocol=1。本次文档FileProvider URI以data/ClipData提供读写授权，额外传dayflow_id、dayflow_revision、dayflow_title、dayflow_seed、dayflow_dark/font_size/compact及随机dayflow_document_token。只共享一篇文档，不传整库/云端令牌。主程序保存临时文件与会话，异常退出后可恢复副本。用户保存时，插件计算完整文件SHA-256，用同签名INTERNAL权限调用commit_document；本体验证授权令牌/摘要/当前修订，进入同步队列，冲突时创建副本。返回结果带dayflow_title/dayflow_sha256，主程序再次核对并撤销授权。本体也保留基础CommonMark/删除线/复选框预览；完整MD与公式依赖在此APK内，底部格式工具栏删除，所有格式工具位于顶部。
 - app.dayflow.almanac：action app.dayflow.action.ALMANAC，传dayflow_date（YYYY-MM-DD）和主题seed，完全离线，无笔记/账号/位置权限。农历日历和调休仍是本体基础显示。
-- app.dayflow.assistant：可选本机HTTP桥接，action app.dayflow.action.ASSISTANT_API。必须从本体设置主动启动，独立密钥和前台通知，见助手API.md。大正文通过临时文件授权传本体，不走Binder全文；停止广播受同签名INTERNAL权限保护。
+- app.dayflow.assistant：统一Agent，action app.dayflow.action.ASSISTANT，protocol=2，请求码117。文字/语音、工具编排在插件，本体保留数据、密钥和模型传输。仅同签名权限与当前会话授权可调用，已移除本机HTTP桥接/厂商助手授权，见[Agent插件接口](助手API.md)。
 
 正式下载文件DayFlow-markdown.apk、DayFlow-almanac.apk、DayFlow-assistant.apk；先安装本体，按需安装插件。插件自身不持有业务数据库，卸载不会删除已保存到本体的笔记/日程。未保存插件草稿是插件私有数据，卸载会删除，应先保存/导出。
 
 构建命令增加 :markdownPlugin:assembleRelease :almanacPlugin:assembleRelease :assistantPlugin:assembleRelease。插件使用同一稳定发布证书，不能用不同签名APK替换正式插件。动态代码热替换仍不提供，更新通过签名安装包和系统安装器。
+
+## 1.3.0连贯调用
+
+官方插件没有Launcher入口，与宿主在同一任务栈调用。Markdown保存后返回原笔记，保留.md外部文件写回绑定和冲突副本；字体变化回传dayflow_font_size。Agent由根界面固定入口打开，收集箱资料整理和课表截图复用同一会话协议；资料会话的日程写入由宿主强制pending，不能由模型绕过人工确认。所有正式笔记和日程使用原同步队列；插件配置、会话令牌、近期聊天缓存不进入云同步。

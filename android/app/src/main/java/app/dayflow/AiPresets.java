@@ -8,15 +8,6 @@ import org.json.*;
 
 /** Official Chat Completions presets. Keys are provided by the user, never bundled. */
 public final class AiPresets {
-    private static final String[][] PRESETS={
-        {"DeepSeek Flash","https://api.deepseek.com","deepseek-flash","适合快速提取日程，默认关闭思考。"},
-        {"DeepSeek Pro","https://api.deepseek.com","deepseek-v4-pro","使用 Pro 模型，默认关闭思考。"},
-        {"通义千问","https://dashscope.aliyuncs.com/compatible-mode/v1","qwen-plus","阿里云百炼中国内地接口。此预设用于文字；截图请选择视觉模型。"},
-        {"通义视觉","https://dashscope.aliyuncs.com/compatible-mode/v1","qwen3-vl-plus","用于截图／图片识别，使用百炼中国内地接口。"},
-        {"Kimi","https://api.moonshot.cn/v1","kimi-k2.6","Kimi 通用模型，默认关闭思考。"},
-        {"OpenAI","https://api.openai.com/v1","gpt-4.1-mini","兼容 Chat Completions 的文本／图片模型。"}
-    };
-    public static void show(MainActivity a){AiSettings.show(a);}
     public static JSONObject request(Context context,String endpoint,String model,JSONArray messages)throws JSONException{
         JSONObject body=new JSONObject().put("model",model).put("messages",messages).put("stream",false);
         if(endpoint.equals("https://api.deepseek.com")&&(model.equals("deepseek-flash")||model.equals("deepseek-v4-pro")))body.put("thinking",new JSONObject().put("type","disabled"));

@@ -1,1 +1,1 @@
-<paths xmlns:android="http://schemas.android.com/apk/res/android"><cache-path name="ocr_images" path="shared-images/" /><files-path name="plugin-documents" path="plugin-documents/" /></paths>
+<paths xmlns:android="http://schemas.android.com/apk/res/android"><cache-path name="ocr_images" path="shared-images/" /><files-path name="plugin-documents" path="plugin-documents/" /><cache-path name="assistant-replies" path="assistant-replies/" /></paths>

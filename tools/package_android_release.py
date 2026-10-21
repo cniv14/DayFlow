@@ -91,7 +91,7 @@ def main():
         destination = f'DayFlow-{name}.apk'
         shutil.copyfile(apk, output / destination)
         plugin_names.append(destination)
-    for source, name in (('docs/助手API.md', 'AssistantAPI.md'), ('docs/服务端稳定协议.md', 'ServerContract.md'), ('android/assistantPlugin/src/main/assets/openapi.json', 'assistant-openapi.json')):
+    for source, name in (('docs/助手API.md', 'AssistantAPI.md'), ('docs/服务端稳定协议.md', 'ServerContract.md'), ('docs/Agent使用.md', 'AgentGuide.md')):
         shutil.copyfile(root / source, output / name)
         plugin_names.append(name)
     shutil.copyfile(root / 'docs/插件API.md' , output / 'PluginAPI.md')
