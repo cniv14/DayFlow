@@ -21,6 +21,6 @@ final class CaptureRules {
  static void save(Context c,String pkg,String group,String sender,String title,String text,String timestamp)throws Exception{
   if(!enabled(c)||!app(c,pkg)||!group(c,pkg,group)||!text(c,title+"\n"+group+"\n"+sender+"\n"+text))return;
   String hash=android.util.Base64.encodeToString(java.security.MessageDigest.getInstance("SHA-256").digest((pkg+"|"+group+"|"+sender+"|"+text+"|"+timestamp).getBytes(java.nio.charset.StandardCharsets.UTF_8)),android.util.Base64.NO_WRAP);Data db=Data.get(c);if(db.seen(hash))return;
-  JSONObject record=Data.make("inbox",title.trim().isEmpty()?"新通知":title).put("content",text).put("source",pkg).put("source_group",group).put("source_sender",sender).put("confirmation_status","pending").put("captured_at",java.time.Instant.now().toString());SmsCapture.enrich(record,text);Data.validate(record);db.save(record);AgendaWidget.refresh(c);
+  JSONObject record=Data.make("inbox",title.trim().isEmpty()?"新通知":title).put("content",text).put("source",pkg).put("source_group",group).put("source_sender",sender).put("confirmation_status","pending").put("captured_at",java.time.Instant.now().toString());try{long sent=Long.parseLong(timestamp);if(sent>0)record.put("source_time",java.time.Instant.ofEpochMilli(sent).toString());}catch(Exception ignored){}SmsCapture.enrich(record,text);Data.validate(record);db.save(record);AgendaWidget.refresh(c);
  }
 }
