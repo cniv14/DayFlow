@@ -14,7 +14,12 @@ dependencies {
  implementation 'androidx.recyclerview:recyclerview:1.4.0'
  implementation 'androidx.appcompat:appcompat:1.7.1'
  implementation 'com.google.android.material:material:1.14.0'
-
+ implementation 'io.noties.markwon:core:4.6.2'
+ implementation 'io.noties.markwon:ext-tables:4.6.2'
+ implementation 'io.noties.markwon:ext-strikethrough:4.6.2'
+ implementation 'io.noties.markwon:ext-tasklist:4.6.2'
+ implementation 'io.noties.markwon:html:4.6.2'
+ implementation 'io.noties.markwon:linkify:4.6.2'
 }
 
 tasks.register('generateThirdPartyNotices', Copy) { from rootProject.file('../THIRD_PARTY_NOTICES.md'); into layout.buildDirectory.dir('generated/thirdPartyAssets/licenses') }
