@@ -9,6 +9,7 @@ services:
       DAYFLOW_REGISTRATION: ${DAYFLOW_REGISTRATION:-true}
       DAYFLOW_INVITE_CODE: ${DAYFLOW_INVITE_CODE:-}
       DAYFLOW_UPDATES_DIR: /updates
+      DAYFLOW_MAX_SYNC_BYTES: ${DAYFLOW_MAX_SYNC_BYTES:-0}
     volumes:
       - dayflow-data:/data
       - ./updates:/updates:ro

@@ -8,6 +8,8 @@
 
 1.2.0增加天气周预览、月历日程与调休黄历、长按提前/延后、短信取件码/话费收集、项目打卡和看板、专注计时、原生截图裁剪、网页/HTML/重复ICS导入。修正应用壁纸取色，底部导航透明且只显示主题图标。Markdown保留公式渲染并扩展表格、图片、脚注和字号，默认文件名为日期。
 
+完整Markdown、黄历、助手API均已拆成可选APK：[Markdown](https://github.com/cniv14/DayFlow/releases/download/v1.2.0/DayFlow-markdown.apk) / [黄历](https://github.com/cniv14/DayFlow/releases/download/v1.2.0/DayFlow-almanac.apk) / [助手API](https://github.com/cniv14/DayFlow/releases/download/v1.2.0/DayFlow-assistant.apk)。本体保留基础笔记、农历、日程与同步。笔记不再设置固定字数/大小配额，服务端稳定契约见[说明](docs/服务端稳定协议.md)。
+
 可选离线OCR独立安装：[arm64](https://github.com/cniv14/DayFlow/releases/download/v1.2.0/DayFlow-ocr-arm64.apk) / [armv7](https://github.com/cniv14/DayFlow/releases/download/v1.2.0/DayFlow-ocr-armv7.apk)，通常现代手机选arm64。无需OCR时只安装主包。见[插件API](docs/插件API.md)与[同步API](docs/客户端同步API.md)。
 
 按要求已依次提供0.5.0、1.0.0和1.1.0三个发布阶段：任务管理补齐、连接现有TaskFlow Windows、操作与资源完善。Windows源码不修改。所有新版均只编译打包，实际连接与交互由用户实测。
@@ -76,7 +78,7 @@ Windows 打包必须把 `DayFlow.Updater.*` 与 `DayFlow.Widget.*` 一起放到�
 2. 新修订是本地修订的后代时更新原事项。
 3. 并发修改或历史不足以判断时保留明确标记的冲突副本。
 
-文件不含 API Key、密码、会话令牌、壁纸或设备配置。图片笔记以压缩 JPEG 内嵌，可随文件和云端同步。文件为明文。Android 单次导入最多16MB；导出有内存保护上限，超过上限时提示改用服务器增量同步，分卷导出尚未实现。
+文件不含 API Key、密码、会话令牌、壁纸或设备配置。图片笔记以压缩 JPEG 内嵌，可随文件和云端同步。文件为明文。1.2.0文件同步逐条读取/写入，不再设置固定导入导出大小配额；大文档仍需要足够物理内存和存储。
 
 账号绑定后不能直接把同一个本地库切换给其他账号；需要先备份，再建立独立数据目录或清除应用数据重新配置。服务器变更时请先导出，不能沿用旧服务器的同步游标。
 

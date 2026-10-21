@@ -4,3 +4,7 @@ rootProject.name = 'DayFlow'
 include ':app'
 
 include ':ocrPlugin'
+
+include ':markdownPlugin', ':almanacPlugin'
+
+include ':assistantPlugin'

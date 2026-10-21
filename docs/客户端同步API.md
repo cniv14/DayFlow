@@ -374,3 +374,14 @@ AI课表是客户端直接访问用户模型接口，输入image_url与补充文
 打卡UUID为对UTF-8 `dayflow:checkin:<项目UUID>:<YYYY-MM-DD>`执行UUID.nameUUIDFromBytes（MD5+version3+RFC4122 variant，无额外命名空间）。相同日保存更新原记录，撤销使用deleted=true。其他客户端无需提供打卡UI也能将其作为普通Markdown笔记展示和同步。专注记录使用 `focus:<本次随机UUID>` 同算法生成ID。笔记提取任务使用 `md-task:<笔记UUID>:<零起始行号>:<正文>` 同算法，最多100项；不要用文件名当记录身份。
 
 截图、网页、插件识别先为inbox/pending，用户确认后转正式记录。所有导入流程均不能把插件提供的ID当作覆盖权限。插件Intent协议与云同步分开，见插件API.md。主题、权限、插件安装与启用、天气缓存及正在计时的会话不随记录同步；打卡笔记、完成的专注笔记和来源关联字段参与同步。原TaskFlow attributesJson.dayflow扩展映射保留未知字段；未进行真实双机验证。
+
+
+## 服务端1.2.0稳定化与大笔记
+
+v1路由、CAS、账号隔离和未知字段保留规则固定，见服务端稳定协议.md。移除单条64KiB及认证sync请求2MiB配额；/health.limits.record_bytes=0、sync_body_bytes=0表示默认无产品字节上限，管理员可配置部署限额。登录/控制请求和分页批次仍有资源保护，分页可返回单条超过目标大小的大记录，不截断正文。完整内容仍在record.content中传输，不新增私有分片消息，其他客户端无需理解Android的本地摘要列。
+
+Android本地_dayflow_preview仅为UI摘要标记，绝不进入同步/导出；网络收到该字段会拒绝。SQLite权威正文分段读取、列表读摘要，编辑/同步/导出取完整内容。dayflow文件改为逐条验证和合并，不再设置4MiB导出、16MiB导入或20000条文件上限。
+
+客户端remote处理先比较revision/ancestors；远端为本地祖先时只更新base_version并保留dirty，继续CAS上传；本地为远端祖先时接受远端；无法证明先后关系才保留确定ID冲突副本。已有冲突需用户选择保留哪份，不能按标题相同自动删除。
+
+助手API和内部文档提交均为本机接口，与/v1/sync账号Token完全分离，不要在其他客户端把API密钥混用。

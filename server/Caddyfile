@@ -1,6 +1,5 @@
 {$DAYFLOW_DOMAIN:localhost} {
-    request_body {
-        max_size 2MB
-    }
+    # Authenticated sync accepts large records. The Python service authenticates
+    # before reading /v1/sync and keeps control requests bounded independently.
     reverse_proxy dayflow:8765
 }

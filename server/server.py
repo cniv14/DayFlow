@@ -7,6 +7,8 @@ import argparse
 import hashlib
 import hmac
 import json
+import io
+import tempfile
 import os
 import re
 import secrets
@@ -19,7 +21,8 @@ from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
-MAX_BODY = 2 * 1024 * 1024
+MAX_BODY = 2 * 1024 * 1024  # Unauthenticated control requests only.
+MAX_SYNC_BODY = max(0, int(os.getenv("DAYFLOW_MAX_SYNC_BYTES", "0")))  # 0: no product size quota.
 KINDS = {"task", "event", "note", "inbox", "course", "project", "type"}
 TOKEN_TTL = 30 * 86400
 
@@ -135,12 +138,23 @@ class Store:
             uuid.UUID(str(record.get('id', '')))
         except ValueError:
             raise ApiError(400, '事项 id 必须是 UUID')
-        if record.get('kind') not in KINDS:
+        if not isinstance(record.get('kind'), str) or record.get('kind') not in KINDS:
             raise ApiError(400, '未知事项类型')
         if not isinstance(record.get('title'), str) or len(record['title']) > 1000:
             raise ApiError(400, '标题缺失或过长')
-        if len(json.dumps(record, ensure_ascii=False).encode()) > 65536:
-            raise ApiError(400, '单条事项不能超过64KB，图片请独立保存')
+        if '_dayflow_preview' in record:
+            raise ApiError(400, '设备私有预览不能上传')
+        try:
+            uuid.UUID(record.get('revision', ''))
+            ancestors = record.get('ancestors', [])
+            if not isinstance(ancestors, list) or len(ancestors) > 256:
+                raise ValueError()
+            for revision in ancestors:
+                uuid.UUID(revision)
+        except (ValueError, TypeError, AttributeError):
+            raise ApiError(400, '无效修订或祖先历史')
+        if 'content' in record and not isinstance(record['content'], str):
+            raise ApiError(400, 'content 必须为字符串')
         if not isinstance(record.get('deleted', False), bool):
             raise ApiError(400, 'deleted 必须为布尔值')
         for key in ('start_at', 'end_at', 'completed'):
@@ -226,7 +240,7 @@ class Server(ThreadingHTTPServer):
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = 'DayFlow/0.1'
+    server_version = 'DayFlow/1.2'
     def setup(self):
         super().setup()
         self.connection.settimeout(15)
@@ -265,6 +279,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.serve_update(path)
                 return
             body = {}
+            # Authenticate before accepting a potentially large sync body.
+            sync_user = self.user() if post and path == '/v1/sync' else None
             if post:
                 if self.headers.get('Transfer-Encoding'):
                     raise ApiError(400, '不支持分块请求')
@@ -272,21 +288,33 @@ class Handler(BaseHTTPRequestHandler):
                     length = int(self.headers.get('Content-Length', 0))
                 except ValueError:
                     raise ApiError(400, '无效长度')
-                if not 0 < length <= MAX_BODY:
-                    raise ApiError(413, '请求体需在1字节至2MB之间')
+                limit = MAX_SYNC_BODY if sync_user else MAX_BODY
+                if length <= 0 or (limit and length > limit):
+                    raise ApiError(413, '请求体为空或超过服务器管理员配置')
                 try:
-                    body = json.loads(self.rfile.read(length))
-                except (ValueError, UnicodeError):
+                    # Spool incoming bytes to disk instead of holding an extra full
+                    # byte array while decoding JSON. A page can contain one large note.
+                    with tempfile.SpooledTemporaryFile(max_size=1024 * 1024, dir=Path(store.path).parent) as incoming:
+                        remaining = length
+                        while remaining:
+                            block = self.rfile.read(min(65536, remaining))
+                            if not block:
+                                raise ApiError(400, '请求体未传输完整')
+                            incoming.write(block)
+                            remaining -= len(block)
+                        incoming.seek(0)
+                        body = json.load(io.TextIOWrapper(incoming, encoding='utf-8'))
+                except (ValueError, UnicodeError, RecursionError):
                     raise ApiError(400, '无效 JSON')
                 if not isinstance(body, dict):
                     raise ApiError(400, '请求体必须为对象')
             if path == '/health' and not post:
-                result = {'ok': True, 'protocol': 1, 'service': 'dayflow', 'capabilities': ['types', 'recurrence'], 'version': '0.5.0'}
+                result = {'ok': True, 'protocol': 1, 'service': 'dayflow', 'capabilities': ['types', 'recurrence', 'opaque_fields', 'large_records', 'cas'], 'version': '1.2.0', 'limits': {'sync_body_bytes': MAX_SYNC_BODY, 'record_bytes': 0, 'mutations_per_batch': 100, 'changes_per_page': 200}}
             elif path in ('/v1/auth/register', '/v1/auth/login') and post:
                 store.limit('auth:' + self.client_address[0])
                 result = store.auth(body, path.endswith('register'))
             elif path == '/v1/sync' and post:
-                result = store.sync(self.user(), body)
+                result = store.sync(sync_user, body)
             elif path == '/v1/me' and not post:
                 user = self.user()
                 with store.connect() as db:

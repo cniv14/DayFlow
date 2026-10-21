@@ -2,7 +2,7 @@
 
 DayFlow's original source code is licensed under MIT. Dependency licenses remain applicable to those dependencies.
 
-Android 1.2.0 uses:
+Android 1.2.0 core and optional plugins use the following components; Markdown/Markwon/JLaTeXMath are distributed in the optional Markdown APK, not the core APK:
 
 - Markwon ext-latex and inline-parser 4.6.2, Apache License 2.0, https://github.com/noties/Markwon — native Markdown formula integration.
 - JLaTeXMath Android 0.2.0, upstream tag `v0.2.0`, commit `cc2a83dcf695028b5588f91a90734d94eb5bd02b`, https://github.com/noties/jlatexmath-android — GNU GPL v2 or later with the upstream special linking exception for independent modules. This component retains its own license; DayFlow's original independent source remains MIT. The unmodified corresponding upstream source, including build files, fonts and licenses, is distributed alongside the APK as `MathRenderer-source.zip`. GPL text, linking exception and font licenses are included in the APK under `licenses/jlatexmath/`. The fonts retain their original OFL, Knuth, free/public-domain or GPL terms as described in that directory and the corresponding source archive.
@@ -52,3 +52,5 @@ Optional OCR is a separate APK and process, not included in the core APK:
 - Corresponding upstream license texts are bundled under android/ocrPlugin/src/main/assets/licenses/. AndroidX and Material dependencies retain Apache-2.0 as above.
 
 Workflow ideas were informed by Super Productivity (MIT, https://github.com/johannesjo/super-productivity), notably focus sessions, task notes and project boards. DayFlow implements these independently; no Super Productivity source is redistributed.
+
+The almanac APK independently uses lunar-java (MIT); the core retains lunar-java for basic lunar calendar display. The assistant API APK uses AndroidX/Material (Apache-2.0). The Markdown APK retains the full license/source obligations above; MathRenderer-source.zip must accompany its distribution. Plugin APKs may duplicate Android base libraries; users install only the capabilities they need.

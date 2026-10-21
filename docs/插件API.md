@@ -28,3 +28,14 @@
 大型后续能力优先新增插件模块；主应用只保留基础UI、数据模型与狭窄接口。主包走原有RSA签名更新清单及系统安装器，插件目前由Release手动安装/升级，不支持静默热替换代码。服务端现有updates路由不额外开放插件文件名，私有镜像请用单独HTTPS静态下载地址，不能直接假定已有分发API。
 
 插件有独立私有目录和进程；主程序缓存清理无法删除插件模型，交给系统存储/卸载入口。插件不持有长驻服务和无期限任务。扩展启用设置、权限、缓存和正在运行的专注计时是设备配置，不参与云同步，确认后的记录正常同步。
+
+
+## 独立Markdown、黄历与助手插件
+
+- app.dayflow.markdown：action app.dayflow.action.MARKDOWN，主程序显式启动，protocol=1。本次文档FileProvider URI以data/ClipData提供读写授权，额外传dayflow_id、dayflow_revision、dayflow_title、dayflow_seed及随机dayflow_document_token。只共享一篇文档，不传整库/云端令牌。主程序保存临时文件与会话，异常退出后可恢复副本。用户保存时，插件计算完整文件SHA-256，用同签名INTERNAL权限调用commit_document；本体验证授权令牌/摘要/当前修订，进入同步队列，冲突时创建副本。返回结果带dayflow_title/dayflow_sha256，主程序再次核对并撤销授权。完整MD与公式依赖只在这个APK内，底部格式工具栏删除，所有格式工具位于顶部。
+- app.dayflow.almanac：action app.dayflow.action.ALMANAC，传dayflow_date（YYYY-MM-DD）和主题seed，完全离线，无笔记/账号/位置权限。农历日历和调休仍是本体基础显示。
+- app.dayflow.assistant：可选本机HTTP桥接，action app.dayflow.action.ASSISTANT_API。必须从本体设置主动启动，独立密钥和前台通知，见助手API.md。大正文通过临时文件授权传本体，不走Binder全文；停止广播受同签名INTERNAL权限保护。
+
+正式下载文件DayFlow-markdown.apk、DayFlow-almanac.apk、DayFlow-assistant.apk；先安装本体，按需安装插件。插件自身不持有业务数据库，卸载不会删除已保存到本体的笔记/日程。未保存插件草稿是插件私有数据，卸载会删除，应先保存/导出。
+
+构建命令增加 :markdownPlugin:assembleRelease :almanacPlugin:assembleRelease :assistantPlugin:assembleRelease。插件使用同一稳定发布证书，不能用不同签名APK替换正式插件。动态代码热替换仍不提供，更新通过签名安装包和系统安装器。

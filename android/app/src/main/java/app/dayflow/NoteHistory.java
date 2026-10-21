@@ -1,11 +1,13 @@
 package app.dayflow;
-
-import java.util.*;
-
-/** Bounded Markdown snapshots; cursor/span state is reconstructed by the editor. */
+import java.util.*;import java.io.*;import java.nio.charset.StandardCharsets;
+/** Undo stores only changed ranges. Large changed ranges spool to private cache. */
 final class NoteHistory {
-    private final ArrayList<String> states=new ArrayList<>();private int position=-1;
-    void capture(String value){if(position>=0&&states.get(position).equals(value))return;while(states.size()>position+1)states.remove(states.size()-1);states.add(value);position=states.size()-1;int total=0;for(String s:states)total+=s.length()*2;while(states.size()>1&&(states.size()>30||total>512*1024)){total-=states.remove(0).length()*2;position--;}}
-    String undo(){return position>0?states.get(--position):null;}
-    String redo(){return position+1<states.size()?states.get(++position):null;}
+ private static final class Payload {String text;File file;Payload(String source,int start,int length,File directory){if(length<=8192||directory==null){text=source.substring(start,start+length);return;}try{directory.mkdirs();file=File.createTempFile("edit-",".txt",directory);try(Writer out=new OutputStreamWriter(new FileOutputStream(file),StandardCharsets.UTF_8)){out.write(source,start,length);}}catch(IOException e){if(file!=null)file.delete();file=null;text=source.substring(start,start+length);}}String read()throws IOException{if(file==null)return text;try(Reader in=new InputStreamReader(new FileInputStream(file),StandardCharsets.UTF_8)){StringBuilder out=new StringBuilder();char[] buffer=new char[8192];int n;while((n=in.read(buffer))!=-1)out.append(buffer,0,n);return out.toString();}}void delete(){if(file!=null)file.delete();}}
+ private static final class Change {int start,removedLength,insertedLength;Payload removed,inserted;void delete(){removed.delete();inserted.delete();}}
+ private final ArrayList<Change> edits=new ArrayList<>();private int position;private String current;private File directory;private boolean closed;
+ void attach(File cache){directory=new File(new File(cache,"note-history"),UUID.randomUUID().toString());}
+ void capture(String value){if(closed)return;if(current==null){current=value;return;}if(current.equals(value))return;while(edits.size()>position)edits.remove(edits.size()-1).delete();int prefix=0,min=Math.min(current.length(),value.length());while(prefix<min&&current.charAt(prefix)==value.charAt(prefix))prefix++;if(prefix>0&&prefix<current.length()&&Character.isHighSurrogate(current.charAt(prefix-1)))prefix--;int suffix=0;while(suffix<min-prefix&&current.charAt(current.length()-1-suffix)==value.charAt(value.length()-1-suffix))suffix++;if(suffix>0&&Character.isLowSurrogate(current.charAt(current.length()-suffix)))suffix--;Change change=new Change();change.start=prefix;change.removedLength=current.length()-prefix-suffix;change.insertedLength=value.length()-prefix-suffix;change.removed=new Payload(current,prefix,change.removedLength,directory);change.inserted=new Payload(value,prefix,change.insertedLength,directory);edits.add(change);position++;current=value;while(edits.size()>30){edits.remove(0).delete();position--;}}
+ String undo(){if(position<=0)return null;Change change=edits.get(position-1);try{String restored=new StringBuilder(current).replace(change.start,change.start+change.insertedLength,change.removed.read()).toString();position--;return current=restored;}catch(IOException e){return null;}}
+ String redo(){if(position>=edits.size())return null;Change change=edits.get(position);try{String restored=new StringBuilder(current).replace(change.start,change.start+change.removedLength,change.inserted.read()).toString();position++;return current=restored;}catch(IOException e){return null;}}
+ void close(){closed=true;for(Change change:edits)change.delete();edits.clear();current=null;if(directory!=null)directory.delete();}
 }

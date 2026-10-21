@@ -1,5 +1,7 @@
 """Package an Android-only release while retaining unchanged companion downloads."""
 import argparse
+import base64
+import json
 import hashlib
 from pathlib import Path
 import shutil
@@ -33,7 +35,7 @@ def main():
             archive.write(root/'LICENSE','LICENSE')
             archive.writestr('README.txt','DayFlow '+args.version+'\n需要 .NET 10 Desktop Runtime。解压到可写目录，运行 DayFlow.Widget.exe。保留 Updater 文件以使用在线更新。\n')
         with zipfile.ZipFile(output / 'DayFlow-server.zip', 'w', zipfile.ZIP_DEFLATED) as archive:
-            for name in ('server.py','test_server.py','Dockerfile','compose.yaml','Caddyfile','.env.example'):
+            for name in ('server.py','backup.py','test_server.py','Dockerfile','compose.yaml','Caddyfile','.env.example'):
                 archive.write(root/'server'/name,'server/'+name)
             archive.writestr('server/updates/.keep','')
             archive.write(root/'LICENSE','LICENSE')
@@ -44,7 +46,7 @@ def main():
             shutil.copyfile(args.companions / name, output / name)
     if args.refresh_server and not args.refresh_companions:
         with zipfile.ZipFile(output / 'DayFlow-server.zip', 'w', zipfile.ZIP_DEFLATED) as archive:
-            for name in ('server.py','Dockerfile','compose.yaml','Caddyfile','.env.example'):
+            for name in ('server.py','backup.py','Dockerfile','compose.yaml','Caddyfile','.env.example'):
                 archive.write(root/'server'/name,'server/'+name)
             archive.writestr('server/updates/.keep','')
             archive.write(root/'LICENSE','LICENSE')
@@ -55,6 +57,17 @@ def main():
             args.version, args.code,
             android=root / 'android/app/build/outputs/apk/release/app-release.apk',
             windows=output/'DayFlow-windows.zip' if args.refresh_companions else None)
+    if not args.refresh_companions:
+        # Rehost unchanged Windows bytes on this release before old releases are
+        # removed. Preserve its real version/code instead of inventing a new build.
+        previous = json.loads((output / 'windows-update.json').read_text(encoding='utf-8'))
+        payload = json.loads(base64.b64decode(previous['payload']))
+        with (output / 'DayFlow-windows.zip').open('rb') as stream:
+            if hashlib.file_digest(stream, 'sha256').hexdigest() != payload['sha256']:
+                parser.error('The preserved Windows ZIP does not match its signed manifest.')
+        publish(root / '.signing/updates-private.pem', output,
+                'https://github.com/cniv14/DayFlow/releases/download/v' + args.version,
+                payload['version'], payload['version_code'], windows=output / 'DayFlow-windows.zip')
     shutil.copyfile(root / 'docs' / ('Android-' + args.version + '.md'), output / 'Testing.md')
     shutil.copyfile(root / 'examples/课表模板.csv', output / 'timetable-template.csv')
     api_doc = root / 'docs/客户端同步API.md'
@@ -71,9 +84,19 @@ def main():
         destination = f'DayFlow-ocr-{name}.apk'
         shutil.copyfile(apk, output / destination)
         plugin_names.append(destination)
-    shutil.copyfile(root / 'docs/插件API.md', output / 'PluginAPI.md')
+    for module, name in (('markdownPlugin', 'markdown'), ('almanacPlugin', 'almanac'), ('assistantPlugin', 'assistant')):
+        apk = root / 'android' / module / 'build/outputs/apk/release' / f'{module}-release.apk'
+        if not apk.is_file():
+            parser.error(f'Missing plugin APK: {apk}')
+        destination = f'DayFlow-{name}.apk'
+        shutil.copyfile(apk, output / destination)
+        plugin_names.append(destination)
+    for source, name in (('docs/助手API.md', 'AssistantAPI.md'), ('docs/服务端稳定协议.md', 'ServerContract.md'), ('android/assistantPlugin/src/main/assets/openapi.json', 'assistant-openapi.json')):
+        shutil.copyfile(root / source, output / name)
+        plugin_names.append(name)
+    shutil.copyfile(root / 'docs/插件API.md' , output / 'PluginAPI.md')
     plugin_names.append('PluginAPI.md')
-    math_included = 'ext-latex' in (root/'android/app/build.gradle').read_text(encoding='utf-8')
+    math_included = any('ext-latex' in file.read_text(encoding='utf-8') for file in (root/'android').glob('*/build.gradle'))
     if math_included:
         source = args.math_source or root/'dist/third-party/jlatexmath-android-v0.2.0-source.zip'
         if not source.is_file():

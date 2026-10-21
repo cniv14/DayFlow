@@ -1,0 +1,1 @@
+package app.dayflow.assistant;import android.content.*;public final class StopReceiver extends BroadcastReceiver {public void onReceive(Context c,Intent i){c.stopService(new Intent(c,ApiService.class));}}

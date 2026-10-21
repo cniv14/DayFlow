@@ -1,4 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <permission android:name="app.dayflow.permission.INTERNAL" android:protectionLevel="signature" /><uses-permission android:name="app.dayflow.permission.INTERNAL" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
@@ -35,6 +36,7 @@
                 <data android:mimeType="text/markdown" /><data android:mimeType="text/x-markdown" />
             </intent-filter>
         </activity>
+        <provider android:name=".ApiProvider" android:authorities="app.dayflow.api" android:exported="true" />
         <receiver android:name=".FocusTimer" android:exported="false" />
         <provider android:name="androidx.core.content.FileProvider" android:authorities="app.dayflow.files" android:exported="false" android:grantUriPermissions="true"><meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/shared_images" /></provider>
         <receiver android:name=".SmsCapture" android:permission="android.permission.BROADCAST_SMS" android:exported="true"><intent-filter><action android:name="android.provider.Telephony.SMS_RECEIVED" /></intent-filter></receiver>
