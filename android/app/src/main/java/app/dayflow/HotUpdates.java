@@ -22,7 +22,7 @@ public final class HotUpdates {
     public static void init(Context c){
         if(prefs(c).getBoolean("hot_rendering",false))prefs(c).edit().putBoolean("hot_enabled",false).remove("hot_rendering").putString("hot_status","上次热更新异常，已恢复基础界面").commit();
         Thread.UncaughtExceptionHandler previous=Thread.getDefaultUncaughtExceptionHandler();
-        Thread.setDefaultUncaughtExceptionHandler((thread,error)->{if(module!=null)prefs(c).edit().putBoolean("hot_enabled",false).putString("hot_status","热更新运行异常，已停用；重新打开使用基础界面").commit();if(previous!=null)previous.uncaughtException(thread,error);});
+        Thread.setDefaultUncaughtExceptionHandler((thread,error)->{ModuleUpdates.crash(error);if(module!=null)prefs(c).edit().putBoolean("hot_enabled",false).putString("hot_status","热更新运行异常，已停用；重新打开使用基础界面").commit();if(previous!=null)previous.uncaughtException(thread,error);});
     }
     static JSONObject validate(Context c,JSONObject envelope)throws Exception{
         JSONObject p=Updates.signedPayload(c,envelope);int base=c.getPackageManager().getPackageInfo(c.getPackageName(),0).versionCode;
@@ -39,8 +39,7 @@ public final class HotUpdates {
     }
     public static String check(Context c)throws Exception{
         SharedPreferences p=prefs(c);JSONObject envelope;
-        if("server".equals(p.getString("hot_source","github"))){String token=Secrets.get(c,"token");if(token.isEmpty())throw new IOException("请先登录日栖服务端再获取热更新");envelope=Network.request(Network.serverEndpoint(p.getString("server",""))+"/v1/runtime-update",null,token);}
-        else {HttpURLConnection connection=Updates.open(p.getString("hot_feed",DEFAULT_FEED));try(InputStream in=connection.getInputStream()){envelope=new JSONObject(Network.read(in,MAX));}finally{connection.disconnect();}}
+        envelope=UpdateSources.json(c,"runtime-update.json");
         JSONObject payload=validate(c,envelope);long version=payload.getLong("version_code");String encoded=envelope.toString();if(encoded.getBytes(StandardCharsets.UTF_8).length>MAX)throw new IOException("热更新包过大");
         synchronized(HotUpdates.class){if(version<=p.getLong("hot_highwater",0))return "已是最新热更新；本地回退不会被自动覆盖";
             // Validate bytecode/interface before changing the working slot; no constructor runs here.

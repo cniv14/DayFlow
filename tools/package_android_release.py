@@ -17,6 +17,7 @@ def main():
                         help='Previous release directory containing Windows/server assets and Windows feed')
     parser.add_argument('--refresh-companions', action='store_true',
                         help='Package newly built Windows binaries and current server with matching versions')
+    parser.add_argument('--embedded-modules', action='store_true', help='Publish signed module updates instead of separate APKs')
     parser.add_argument('--skip-ocr', action='store_true', help='Omit optional OCR APKs')
     parser.add_argument('--refresh-server', action='store_true',
                         help='Refresh server sources while preserving the existing Windows binary/feed')
@@ -53,7 +54,7 @@ def main():
             archive.write(root/'LICENSE','LICENSE')
             for file in (root/'docs').glob('*.md'):
                 archive.write(file,'docs/'+file.name)
-            for name in ('tools/publish_runtime_update.py','tools/build_runtime_example.py','examples/hotupdate/Entry.java','android/app/src/main/java/app/dayflow/HotModule.java'):
+            for name in ('tools/publish_runtime_update.py','tools/build_runtime_example.py','examples/hotupdate/Entry.java','android/app/src/main/java/app/dayflow/HotModule.java','tools/package_feature_modules.py','tools/package_voice_engine.py','tools/publish_voice_model.py','tools/fetch_whisper.py'):
                 archive.write(root/name,name)
     publish(root / '.signing/updates-private.pem', output,
             'https://github.com/cniv14/DayFlow/releases/download/v' + args.version,
@@ -87,14 +88,19 @@ def main():
         destination = f'DayFlow-ocr-{name}.apk'
         shutil.copyfile(apk, output / destination)
         plugin_names.append(destination)
-    for module, name in (('markdownPlugin', 'markdown'), ('almanacPlugin', 'almanac'), ('assistantPlugin', 'assistant')):
+    for module, name in (() if args.embedded_modules else (('markdownPlugin', 'markdown'), ('almanacPlugin', 'almanac'), ('assistantPlugin', 'assistant'))):
         apk = root / 'android' / module / 'build/outputs/apk/release' / f'{module}-release.apk'
         if not apk.is_file():
             parser.error(f'Missing plugin APK: {apk}')
         destination = f'DayFlow-{name}.apk'
         shutil.copyfile(apk, output / destination)
         plugin_names.append(destination)
-    for source, name in (('docs/助手API.md', 'AssistantAPI.md'), ('docs/服务端稳定协议.md', 'ServerContract.md'), ('docs/Agent使用.md', 'AgentGuide.md'), ('docs/功能热更新.md', 'RuntimeUpdateAPI.md')):
+    if args.embedded_modules:
+        for name in ('assistant-module.json','markdown-module.json','almanac-module.json','voice-module.json','voice-engine.json','voice-engine-arm64.zip','voice-engine-armv7.zip'):
+            if not (output/name).is_file():
+                parser.error('Build signed feature and native engine packages first: '+name)
+            plugin_names.append(name)
+    for source, name in (('docs/助手API.md', 'AssistantAPI.md'), ('docs/服务端稳定协议.md', 'ServerContract.md'), ('docs/Agent使用.md', 'AgentGuide.md'), ('docs/功能热更新.md', 'RuntimeUpdateAPI.md'), ('docs/统一更新与语音.md', 'UnifiedUpdates.md')):
         shutil.copyfile(root / source, output / name)
         plugin_names.append(name)
     shutil.copyfile(root / 'docs/插件API.md' , output / 'PluginAPI.md')

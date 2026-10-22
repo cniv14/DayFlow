@@ -1,0 +1,22 @@
+package app.dayflow;
+import android.content.*;import android.util.AtomicFile;import android.widget.*;import org.json.*;import java.io.*;import java.nio.charset.StandardCharsets;import java.util.*;
+/** Local private snapshots, never exported. Revision checks prevent overwriting later edits/sync. */
+final class UndoHistory {
+ private static AtomicFile index(Context c){return new AtomicFile(new File(c.getFilesDir(),"undo/index.json"));}
+ private static File snapshot(Context c,String id){if(!id.matches("[a-f0-9-]{36}"))throw new IllegalArgumentException();return new File(c.getFilesDir(),"undo/"+id+".json");}
+ private static synchronized JSONArray entries(Context c)throws Exception{if(!index(c).getBaseFile().exists())return new JSONArray();try(InputStream in=index(c).openRead()){return new JSONArray(Network.read(in,128*1024));}}
+ private static void write(AtomicFile file,String text)throws Exception{FileOutputStream out=null;try{out=file.startWrite();try(Writer writer=new OutputStreamWriter(out,StandardCharsets.UTF_8)){writer.write(text);writer.flush();file.finishWrite(out);}}catch(Exception e){if(out!=null)file.failWrite(out);throw e;}}
+ static synchronized void record(Context c,JSONObject before,JSONObject after,String source)throws Exception{
+  String key=UUID.randomUUID().toString();write(new AtomicFile(snapshot(c,key)),before==null?"null":before.toString());JSONArray list=entries(c),next=new JSONArray();next.put(new JSONObject().put("key",key).put("id",after.getString("id")).put("revision",after.getString("revision")).put("title",after.optString("title")).put("source",source).put("time",java.time.Instant.now().toString()).put("deleted",after.optBoolean("deleted")));
+  for(int i=0;i<Math.min(29,list.length());i++)next.put(list.get(i));write(index(c),next.toString());for(int i=29;i<list.length();i++)snapshot(c,list.getJSONObject(i).getString("key")).delete();
+ }
+ static String restoreRecord(Context c,String id,String revision)throws Exception{JSONArray list=entries(c);for(int i=0;i<list.length();i++){JSONObject entry=list.getJSONObject(i);if(id.equals(entry.optString("id"))&&revision.equals(entry.optString("revision")))return restore(c,entry.getString("key"));}throw new IOException("撤销记录已变化，请在最近操作中恢复");}
+ static String latest(Context c,String source)throws Exception{JSONArray list=entries(c);for(int i=0;i<list.length();i++){JSONObject entry=list.getJSONObject(i);if(source==null||source.equals(entry.optString("source")))return restore(c,entry.getString("key"));}throw new IOException("没有可撤销的操作");}
+ static String restore(Context c,String key)throws Exception{
+  JSONArray list=entries(c);JSONObject entry=null;for(int i=0;i<list.length();i++)if(key.equals(list.getJSONObject(i).optString("key")))entry=list.getJSONObject(i);if(entry==null)throw new IOException("撤销记录已不存在");String raw;try(InputStream in=new FileInputStream(snapshot(c,key))){raw=MarkdownFiles.read(in);}Data db=Data.get(c);String beforeRevision="",restoredRevision="";
+  synchronized(db){JSONObject current=db.find(entry.getString("id"));if(current==null||!entry.getString("revision").equals(current.optString("revision")))throw new IOException("事项已被编辑或同步更新，未覆盖后续修改");JSONObject before="null".equals(raw)?new JSONObject(current.toString()).put("deleted",true):new JSONObject(raw);beforeRevision=before.optString("revision");db.save(before.put("_undo_skip",true));restoredRevision=before.optString("revision");}
+  synchronized(UndoHistory.class){JSONArray fresh=entries(c),next=new JSONArray();for(int i=0;i<fresh.length();i++)if(!key.equals(fresh.getJSONObject(i).optString("key"))){JSONObject prior=fresh.getJSONObject(i);if(entry.getString("id").equals(prior.optString("id"))&&beforeRevision.equals(prior.optString("revision")))prior.put("revision",restoredRevision);next.put(prior);}write(index(c),next.toString());snapshot(c,key).delete();}
+  AgendaWidget.refresh(c);ReminderReceiver.refresh(c);return "已撤销，恢复结果已进入同步队列";
+ }
+ static void show(MainActivity a){LinearLayout page=a.fullPage("撤销与误删恢复",a::home);page.addView(Ui.text(a,"最近操作",24,true));page.addView(Ui.help(a,"保留最近30次删除或助手修改，可恢复误删。若记录之后已被编辑或同步更新，撤销会保留新内容。"));try{JSONArray list=entries(a);if(list.length()==0)page.addView(Ui.help(a,"没有可恢复的操作"));for(int i=0;i<list.length();i++){JSONObject entry=list.getJSONObject(i);page.addView(Ui.button(a,(entry.optBoolean("deleted")?"恢复删除 · ":"撤销操作 · ")+entry.optString("title"),false,()->a.job(()->restore(a,entry.optString("key")),()->show(a))));}}catch(Exception e){a.message(e.getMessage());}}
+}

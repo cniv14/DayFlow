@@ -293,7 +293,12 @@ class Handler(BaseHTTPRequestHandler):
         try:
             path = urlparse(self.path).path
             store = self.server.store
+            if not post and path.startswith('/v1/updates/'):
+                self.serve_account_update(path)
+                return
             if not post and path.startswith('/updates/'):
+                user = self.user()
+                store.runtime_limit(user['user_id'])
                 self.serve_update(path)
                 return
             body = {}
@@ -368,6 +373,31 @@ class Handler(BaseHTTPRequestHandler):
             pass
         except Exception:
             self.respond(500, {'error': '服务内部错误'})
+
+    def serve_account_update(self, path):
+        user = self.user()
+        self.server.store.runtime_limit(user['user_id'])
+        name = path.removeprefix('/v1/updates/')
+        allowed = {'android-update.json', 'DayFlow-android.apk', 'runtime-update.json',
+                   'assistant-module.json', 'markdown-module.json', 'almanac-module.json', 'voice-module.json', 'voice-model.json', 'voice-model.bin', 'voice-engine.json', 'voice-engine-arm64.zip', 'voice-engine-armv7.zip'}
+        if name not in allowed:
+            raise ApiError(404, '更新资源不存在')
+        folder = Path(os.getenv('DAYFLOW_UPDATES_DIR', 'updates')).resolve()
+        file = folder / name
+        if file.is_symlink() or not file.is_file() or file.resolve().parent != folder:
+            raise ApiError(404, '尚未发布此更新')
+        with file.open('rb') as stream:
+            size = os.fstat(stream.fileno()).st_size
+            if size > (12 * 1024 * 1024 if name.endswith('.json') else (512 * 1024 * 1024 if name == 'voice-model.bin' else 200 * 1024 * 1024)):
+                raise ApiError(503, '更新包超过客户端支持范围')
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json' if name.endswith('.json') else 'application/octet-stream')
+            self.send_header('Content-Length', str(size))
+            self.send_header('Cache-Control', 'no-store')
+            self.send_header('X-Content-Type-Options', 'nosniff')
+            self.end_headers()
+            while chunk := stream.read(65536):
+                self.wfile.write(chunk)
 
     def serve_update(self, path):
         allowed = {'android-update.json', 'windows-update.json', 'DayFlow-android.apk', 'DayFlow-windows.zip'}

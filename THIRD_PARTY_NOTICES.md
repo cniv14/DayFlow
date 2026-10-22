@@ -4,7 +4,7 @@
 
 DayFlow's original source code is licensed under MIT. Dependency licenses remain applicable to those dependencies.
 
-The Android core and optional plugins use the following components. The core and assistant APKs include basic Markwon rendering; the optional Markdown APK includes the full editor and JLaTeXMath formula dependencies.
+Android embeds the assistant, Markdown, almanac and voice feature libraries with shared dependencies and resources. Code-only signed patches update these features. Full Markdown/formula dependencies now reside in the base APK; whisper.cpp native engines and model weights are optional downloads.
 
 - Markwon ext-latex and inline-parser 4.6.2, Apache License 2.0, https://github.com/noties/Markwon — native Markdown formula integration.
 - JLaTeXMath Android 0.2.0, upstream tag `v0.2.0`, commit `cc2a83dcf695028b5588f91a90734d94eb5bd02b`, https://github.com/noties/jlatexmath-android — GNU GPL v2 or later with the upstream special linking exception for independent modules. This component retains its own license; DayFlow's original independent source remains MIT. The unmodified corresponding upstream source, including build files, fonts and licenses, is distributed alongside the APK as `MathRenderer-source.zip`. GPL text, linking exception and font licenses are included in the APK under `licenses/jlatexmath/`. The fonts retain their original OFL, Knuth, free/public-domain or GPL terms as described in that directory and the corresponding source archive.
@@ -56,3 +56,6 @@ Optional OCR is a separate APK and process, not included in the core APK:
 Workflow ideas were informed by Super Productivity (MIT, https://github.com/johannesjo/super-productivity), notably focus sessions, task notes and project boards. DayFlow implements these independently; no Super Productivity source is redistributed.
 
 The almanac APK independently uses lunar-java (MIT); the core retains lunar-java for basic lunar calendar display. The assistant API APK uses AndroidX/Material and Markwon (Apache-2.0). The Markdown APK retains the full license/source obligations above; MathRenderer-source.zip must accompany its distribution. Plugin APKs may duplicate Android base libraries; users install only the capabilities they need.
+
+- whisper.cpp v1.9.5, commit d1be6fde11ac6e0407606b4e42fe72d34add8037, https://github.com/ggml-org/whisper.cpp — MIT; optional native local speech engine. Upstream whisper.cpp and ggml license texts are bundled in assets/licenses. No model weights are bundled.
+- Assistant SVG/vector icon paths are original DayFlow artwork under MIT.

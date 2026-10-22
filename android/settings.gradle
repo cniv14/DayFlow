@@ -8,3 +8,5 @@ include ':ocrPlugin'
 include ':markdownPlugin', ':almanacPlugin'
 
 include ':assistantPlugin'
+
+include ':voicePlugin'

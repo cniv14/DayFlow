@@ -1,4 +1,4 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
     <permission android:name="app.dayflow.permission.INTERNAL" android:protectionLevel="signature" /><uses-permission android:name="app.dayflow.permission.INTERNAL" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -13,7 +13,7 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
     <queries><intent><action android:name="app.dayflow.action.EXTENSION" /></intent><intent><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent></queries>
-    <application android:name=".DayFlowApp" android:label="日栖 DayFlow" android:theme="@style/Theme.DayFlow"
+    <application android:name=".DayFlowApp" android:appComponentFactory="app.dayflow.ModuleFactory" tools:replace="android:appComponentFactory" android:label="日栖 DayFlow" android:theme="@style/Theme.DayFlow"
         android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher" android:allowBackup="false" android:supportsRtl="true"
         android:usesCleartextTraffic="true">
         <activity android:name=".MainActivity" android:launchMode="singleTop" android:exported="true" android:windowSoftInputMode="adjustResize">

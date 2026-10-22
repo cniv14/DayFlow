@@ -16,3 +16,5 @@ node_modules/
 server/updates/
 
 android/ocrPlugin/libs/*.aar
+
+**/.cxx/

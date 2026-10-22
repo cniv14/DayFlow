@@ -96,7 +96,7 @@ public final class Data extends SQLiteOpenHelper {
     }
     public synchronized void save(JSONObject r) throws JSONException {
         expandForWrite(r);
-        JSONObject old=find(r.getString("id"));
+        JSONObject old=find(r.getString("id"));JSONObject undoBefore=old;if(undoBefore==null&&r.optBoolean("deleted")&&!r.optString("series_id").isEmpty())undoBefore=resolve(r.getString("id"),r.optString("series_id"),r.optString("occurrence_date"));
         if(old==null&&!r.optString("series_id").isEmpty()){
             r.put("ancestors",new JSONArray().put(r.optString("revision")));
             r.put("revision",UUID.randomUUID().toString());
@@ -107,6 +107,8 @@ public final class Data extends SQLiteOpenHelper {
             bounded.put(old.optString("revision"));r.put("ancestors",bounded);
             r.put("revision",UUID.randomUUID().toString());
         }
+        boolean remember=r.optBoolean("_undo_record")||(undoBefore!=null&&!undoBefore.optBoolean("deleted")&&r.optBoolean("deleted"));boolean skip=r.optBoolean("_undo_skip");String source=r.optString("_undo_source");r.remove("_undo_record");r.remove("_undo_source");r.remove("_undo_skip");
+        if(remember&&!skip)try{UndoHistory.record(context,undoBefore,r,source);}catch(Exception e){throw new JSONException("未能保存撤销记录，操作未执行："+e.getMessage());}
         r.put("updated_at",Instant.now().toString());put(r,true,version(r.getString("id")));
     }
     public synchronized JSONArray inboxPage(int offset) throws JSONException {

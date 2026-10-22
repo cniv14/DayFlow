@@ -4,13 +4,15 @@
 
 **不注册、不联网、不部署服务器，也能使用本地核心功能。** AI、天气、同步和更新检查均为可选联网能力。
 
-**当前 Android： [1.3.1 APK](https://github.com/cniv14/DayFlow/releases/download/v1.3.1/DayFlow-android.apk)** · [发布页](https://github.com/cniv14/DayFlow/releases/tag/v1.3.1) · [使用说明](docs/Android-1.3.1.md)
+**当前 Android： [1.3.2 APK](https://github.com/cniv14/DayFlow/releases/download/v1.3.2/DayFlow-android.apk)** · [发布页](https://github.com/cniv14/DayFlow/releases/tag/v1.3.2) · [使用说明](docs/Android-1.3.2.md)
 
-1.3.1加入可选[软件功能热更新](docs/功能热更新.md)，支持GitHub或登录服务端获取签名原生模块、账号限流与回退。并合并了更新下载与安装恢复、助手图片输入与Markdown消息显示、闹钟提醒改进；今日清单与桌面小组件同时显示进行中的长任务和时间待定待办。继续以统一Agent为核心：主界面固定“问日栖”，文字/语音创建安排和笔记，通知总结与课表截图共用同一套工具调用。短信并入通知收集，可选全部内容、应用、已发现群聊和正则。资料生成日程必须先人工核验，课表保留校正表格。移除厂商助手授权、开放HTTP接口与重复AI操作页。
+1.3.2将AI助手、完整Markdown、黄历和语音改为内嵌模块，不再单独安装插件APK。在设置→统一更新中一次配置GitHub或登录服务端来源、自动检查与回退。插件逻辑用签名热更新包更新；基础安装包约8.7MB，4个代码包合计约260KB。Android 9及以上可热加载模块；Android 8使用内置功能并通过主包升级。
 
-完整Markdown、黄历、Agent助手均为可选APK，安装后直接从日栖调用：[Markdown](https://github.com/cniv14/DayFlow/releases/download/v1.3.1/DayFlow-markdown.apk) / [黄历](https://github.com/cniv14/DayFlow/releases/download/v1.3.1/DayFlow-almanac.apk) / [Agent助手](https://github.com/cniv14/DayFlow/releases/download/v1.3.1/DayFlow-assistant.apk)。本体保留基础Markdown查看/编辑、农历、日程与同步；安装Markdown插件后自动进入完整编辑并返回当前笔记。笔记不再设置固定字数/大小配额，服务端稳定契约见[说明](docs/服务端稳定协议.md)。
+助手支持左右聊天气泡、主题色矢量图标、点击图片预览、直接从对话生成课表草稿、修改与软删除现有安排。课表/通知仍需人工核验，助手变更和删除支持版本校验撤销。收集箱可按软件/群聊一键交给AI，见[新版说明](docs/Android-1.3.2.md)。
 
-离线OCR本次暂缓发布；当前版本可通过Agent配置的视觉模型处理截图。见[插件API](docs/插件API.md)与[同步API](docs/客户端同步API.md)。
+语音支持系统服务、百炼Qwen-ASR官方API及MIT whisper.cpp本地小模型。录音文字先填入输入框，不直接执行；本地引擎和模型按需获取，不增加常驻内存。本次提供双ARM引擎签名包（每架构约1MB），不附带大模型权重；可自行导入官方多语言GGML .bin或在自托管端发布签名模型。百炼API接入不代表在Android里运行CLI，详见[统一更新与语音](docs/统一更新与语音.md)。
+
+主包、模块、引擎和可选模型都可从同一GitHub目录或日栖服务器获取。服务端更新入口必须登录，每账号默认每小时10次，所有设备共享；原同步v1契约保留。Windows不重建。OCR继续暂缓。
 
 按要求已依次提供0.5.0、1.0.0和1.1.0三个发布阶段：任务管理补齐、连接现有TaskFlow Windows、操作与资源完善。Windows源码不修改。所有新版均只编译打包，实际连接与交互由用户实测。
 
@@ -53,7 +55,8 @@ Android 使用 JDK 17、Gradle 9.6.1、Android SDK 36，Android Gradle Plugin 9.
 
 ```powershell
 cd android
-gradle :app:assembleDebug
+python ../tools/fetch_whisper.py
+gradle :app:assembleRelease :app:exportModuleClasspath
 # 可选OCR插件先在仓库根目录运行 python tools/fetch_ocr.py，再执行：
 # gradle :ocrPlugin:assembleRelease
 ```

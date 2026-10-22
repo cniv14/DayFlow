@@ -1,3 +1,5 @@
+> 1.3.2更新：助手、Markdown、黄历和语音已改为内嵌库与签名代码包，不再安装独立APK；来源、自动检查和回退统一在设置管理。服务端统一入口`GET /v1/updates/<name>`需要登录并按账号限流，旧`/updates/`也要求登录。Android 9+支持模块热加载。详见[统一更新与语音](统一更新与语音.md)。以下保留旧协议背景；插件Intent组件现在属于app.dayflow本体，旧独立APK无需继续使用。
+
 # Android插件API v1
 
 插件是用户单独安装的Android APK，通过Activity Intent通信，不是动态dex、脚本注入或网络服务。主应用不向插件传递账号、AI Key、完整数据库或同步令牌；正式数据仍使用客户端同步API.md。

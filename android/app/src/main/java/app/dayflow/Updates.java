@@ -22,7 +22,7 @@ public final class Updates {
     public static final String DEFAULT_FEED="https://github.com/cniv14/DayFlow/releases/latest/download/android-update.json";
     private static final String CACHE="dayflow-update.apk";
     private static final String PENDING="update_pending_path";
-    public static String feed(Context c){return c.getSharedPreferences("settings",0).getString("update_feed",DEFAULT_FEED);}
+    public static String feed(Context c){try{return UpdateSources.url(c,"android-update.json");}catch(Exception e){return DEFAULT_FEED;}}
     static HttpURLConnection open(String value)throws Exception{
         String current=value;for(int i=0;i<6;i++){
             URI transport=new URI(current);if(transport.getRawUserInfo()!=null||transport.getRawFragment()!=null)throw new Exception("无效更新地址");Network.endpoint(transport.getScheme()+"://"+transport.getRawAuthority()+transport.getRawPath(),true);HttpURLConnection connection=(HttpURLConnection)new URL(current).openConnection();
@@ -44,12 +44,12 @@ public final class Updates {
         Network.endpoint(info.getString("url"),true);return info;
     }
     public static JSONObject check(Context c)throws Exception{
-        HttpURLConnection connection=open(feed(c));try(InputStream in=connection.getInputStream()){JSONObject info=verify(c,new JSONObject(Network.read(in,65536)));
+        HttpURLConnection connection=UpdateSources.open(c,"android-update.json");try(InputStream in=connection.getInputStream()){JSONObject info=verify(c,new JSONObject(Network.read(in,65536)));
             int installed=c.getPackageManager().getPackageInfo(c.getPackageName(),0).versionCode;return info.getInt("version_code")>installed?info:null;
         }finally{connection.disconnect();}
     }
-    public static void configureJob(Context c){JobScheduler scheduler=(JobScheduler)c.getSystemService(Context.JOB_SCHEDULER_SERVICE);scheduler.cancel(701);
-        if(c.getSharedPreferences("settings",0).getBoolean("update_auto",false))scheduler.schedule(new JobInfo.Builder(701,new ComponentName(c,UpdateJob.class)).setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY).setPersisted(true).setPeriodic(12L*60*60*1000).build());
+    public static void configureJob(Context c){JobScheduler scheduler=(JobScheduler)c.getSystemService(Context.JOB_SCHEDULER_SERVICE);if(c.getSharedPreferences("settings",0).getBoolean("updates_auto",false)&&scheduler.getPendingJob(701)!=null)return;scheduler.cancel(701);
+        if(c.getSharedPreferences("settings",0).getBoolean("updates_auto",false))scheduler.schedule(new JobInfo.Builder(701,new ComponentName(c,UpdateJob.class)).setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY).setPersisted(true).setPeriodic(12L*60*60*1000).build());
     }
     public static boolean canInstall(Context c){return c.getPackageManager().canRequestPackageInstalls();}
     private static String sha256(File file)throws Exception{
@@ -66,7 +66,7 @@ public final class Updates {
     }
     public static String download(Context c,JSONObject info)throws Exception{
         String existing=cached(c,info);if(existing!=null)return existing;
-        File file=new File(c.getCacheDir(),CACHE),temp=new File(c.getCacheDir(),CACHE+".part");HttpURLConnection connection=open(info.getString("url"));MessageDigest digest=MessageDigest.getInstance("SHA-256");long total=0;
+        File file=new File(c.getCacheDir(),CACHE),temp=new File(c.getCacheDir(),CACHE+".part");HttpURLConnection connection=UpdateSources.server(c)?UpdateSources.open(c,"DayFlow-android.apk"):open(info.getString("url"));MessageDigest digest=MessageDigest.getInstance("SHA-256");long total=0;
         try(InputStream in=connection.getInputStream();OutputStream out=new FileOutputStream(temp)){
             byte[] bytes=new byte[32768];int n;while((n=in.read(bytes))!=-1){total+=n;if(total>info.getLong("size"))throw new Exception("更新包长度不符");digest.update(bytes,0,n);out.write(bytes,0,n);}
         }catch(Exception error){temp.delete();throw error;}finally{connection.disconnect();}
