@@ -1,6 +1,6 @@
 # Android 1.3.1 · 合并更新与提醒改进
 
-本版基于合并提交 b049cb6，重新构建 Android 本体及全部可选插件。原有数据与签名保持兼容，可直接覆盖安装。
+本版基于合并提交 b049cb6，重新构建 Android 本体及可选插件。原有数据与签名保持兼容，可直接覆盖安装。
 
 ## 本次更新
 
@@ -12,7 +12,7 @@
 
 ## 安装
 
-安装 DayFlow-android.apk；使用助手时同时更新 DayFlow-assistant.apk。Markdown、黄历与离线 OCR 插件按需覆盖安装，OCR 选择对应手机架构。所有 Android APK 版本为 1.3.1，版本号为 131。
+安装 DayFlow-android.apk；使用助手时同时更新 DayFlow-assistant.apk。Markdown、黄历插件按需覆盖安装。本次暂缓发布离线 OCR 插件。已发布 Android APK 版本为 1.3.1，版本号为 131。
 
 本地基础日程、笔记和文件同步仍无需注册或联网。通知整理及课表生成保留人工核验步骤。基础使用说明见 [1.3.0](Android-1.3.0.md)。
 

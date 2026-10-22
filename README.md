@@ -10,7 +10,7 @@
 
 完整Markdown、黄历、Agent助手均为可选APK，安装后直接从日栖调用：[Markdown](https://github.com/cniv14/DayFlow/releases/download/v1.3.1/DayFlow-markdown.apk) / [黄历](https://github.com/cniv14/DayFlow/releases/download/v1.3.1/DayFlow-almanac.apk) / [Agent助手](https://github.com/cniv14/DayFlow/releases/download/v1.3.1/DayFlow-assistant.apk)。本体保留基础Markdown查看/编辑、农历、日程与同步；安装Markdown插件后自动进入完整编辑并返回当前笔记。笔记不再设置固定字数/大小配额，服务端稳定契约见[说明](docs/服务端稳定协议.md)。
 
-可选离线OCR独立安装：[arm64](https://github.com/cniv14/DayFlow/releases/download/v1.3.1/DayFlow-ocr-arm64.apk) / [armv7](https://github.com/cniv14/DayFlow/releases/download/v1.3.1/DayFlow-ocr-armv7.apk)，通常现代手机选arm64。无需OCR时只安装主包。见[插件API](docs/插件API.md)与[同步API](docs/客户端同步API.md)。
+离线OCR本次暂缓发布；当前版本可通过Agent配置的视觉模型处理截图。见[插件API](docs/插件API.md)与[同步API](docs/客户端同步API.md)。
 
 按要求已依次提供0.5.0、1.0.0和1.1.0三个发布阶段：任务管理补齐、连接现有TaskFlow Windows、操作与资源完善。Windows源码不修改。所有新版均只编译打包，实际连接与交互由用户实测。
 
