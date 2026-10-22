@@ -23,7 +23,7 @@ public final class Updates {
     private static final String CACHE="dayflow-update.apk";
     private static final String PENDING="update_pending_path";
     public static String feed(Context c){return c.getSharedPreferences("settings",0).getString("update_feed",DEFAULT_FEED);}
-    private static HttpURLConnection open(String value)throws Exception{
+    static HttpURLConnection open(String value)throws Exception{
         String current=value;for(int i=0;i<6;i++){
             URI transport=new URI(current);if(transport.getRawUserInfo()!=null||transport.getRawFragment()!=null)throw new Exception("无效更新地址");Network.endpoint(transport.getScheme()+"://"+transport.getRawAuthority()+transport.getRawPath(),true);HttpURLConnection connection=(HttpURLConnection)new URL(current).openConnection();
             connection.setInstanceFollowRedirects(false);connection.setConnectTimeout(15000);connection.setReadTimeout(30000);connection.setRequestProperty("User-Agent","DayFlow/0.1");
@@ -31,12 +31,15 @@ public final class Updates {
             if(status!=200){connection.disconnect();throw new Exception(status==404?"尚未发布更新清单，当前安装包可继续使用":"更新服务 HTTP "+status);}return connection;
         }throw new Exception("更新跳转次数过多");
     }
-    public static JSONObject verify(Context c,JSONObject envelope)throws Exception{
+    public static JSONObject signedPayload(Context c,JSONObject envelope)throws Exception{
         byte[] payload=Base64.decode(envelope.getString("payload"),Base64.NO_WRAP),signature=Base64.decode(envelope.getString("signature"),Base64.NO_WRAP);
         String pem;try(InputStream in=c.getResources().openRawResource(R.raw.update_public)){pem=Network.read(in,8192);}
         PublicKey key=KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(Base64.decode(pem.replaceAll("-----[^-]+-----|\\s",""),Base64.NO_WRAP)));
         Signature verifier=Signature.getInstance("SHA256withRSA");verifier.initVerify(key);verifier.update(payload);if(!verifier.verify(signature))throw new Exception("更新清单签名无效，已拒绝更新");
-        JSONObject info=new JSONObject(new String(payload,StandardCharsets.UTF_8));
+        return new JSONObject(new String(payload,StandardCharsets.UTF_8));
+    }
+    public static JSONObject verify(Context c,JSONObject envelope)throws Exception{
+        JSONObject info=signedPayload(c,envelope);
         if(info.getInt("schema")!=1||!"android".equals(info.getString("platform"))||!info.getString("sha256").matches("[a-f0-9]{64}")||info.getLong("size")<=0||info.getLong("size")>200L*1024*1024)throw new Exception("无效更新清单");
         Network.endpoint(info.getString("url"),true);return info;
     }

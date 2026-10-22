@@ -17,6 +17,7 @@ def main():
                         help='Previous release directory containing Windows/server assets and Windows feed')
     parser.add_argument('--refresh-companions', action='store_true',
                         help='Package newly built Windows binaries and current server with matching versions')
+    parser.add_argument('--skip-ocr', action='store_true', help='Omit optional OCR APKs')
     parser.add_argument('--refresh-server', action='store_true',
                         help='Refresh server sources while preserving the existing Windows binary/feed')
     parser.add_argument('--math-source', type=Path,
@@ -52,6 +53,8 @@ def main():
             archive.write(root/'LICENSE','LICENSE')
             for file in (root/'docs').glob('*.md'):
                 archive.write(file,'docs/'+file.name)
+            for name in ('tools/publish_runtime_update.py','tools/build_runtime_example.py','examples/hotupdate/Entry.java','android/app/src/main/java/app/dayflow/HotModule.java'):
+                archive.write(root/name,name)
     publish(root / '.signing/updates-private.pem', output,
             'https://github.com/cniv14/DayFlow/releases/download/v' + args.version,
             args.version, args.code,
@@ -77,7 +80,7 @@ def main():
     if taskflow_doc.exists():
         shutil.copyfile(taskflow_doc, output / 'TaskFlowProtocol.md')
     plugin_names = []
-    for abi, name in (('arm64-v8a', 'arm64'), ('armeabi-v7a', 'armv7')):
+    for abi, name in (() if args.skip_ocr else (('arm64-v8a', 'arm64'), ('armeabi-v7a', 'armv7'))):
         apk = root / 'android/ocrPlugin/build/outputs/apk/release' / f'ocrPlugin-{abi}-release.apk'
         if not apk.is_file():
             parser.error(f'Missing optional OCR APK: {apk}; build :ocrPlugin:assembleRelease first.')
@@ -91,7 +94,7 @@ def main():
         destination = f'DayFlow-{name}.apk'
         shutil.copyfile(apk, output / destination)
         plugin_names.append(destination)
-    for source, name in (('docs/助手API.md', 'AssistantAPI.md'), ('docs/服务端稳定协议.md', 'ServerContract.md'), ('docs/Agent使用.md', 'AgentGuide.md')):
+    for source, name in (('docs/助手API.md', 'AssistantAPI.md'), ('docs/服务端稳定协议.md', 'ServerContract.md'), ('docs/Agent使用.md', 'AgentGuide.md'), ('docs/功能热更新.md', 'RuntimeUpdateAPI.md')):
         shutil.copyfile(root / source, output / name)
         plugin_names.append(name)
     shutil.copyfile(root / 'docs/插件API.md' , output / 'PluginAPI.md')

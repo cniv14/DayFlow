@@ -6,7 +6,7 @@
 
 **当前 Android： [1.3.1 APK](https://github.com/cniv14/DayFlow/releases/download/v1.3.1/DayFlow-android.apk)** · [发布页](https://github.com/cniv14/DayFlow/releases/tag/v1.3.1) · [使用说明](docs/Android-1.3.1.md)
 
-1.3.1合并了更新下载与安装恢复、助手图片输入与Markdown消息显示、闹钟提醒改进；今日清单与桌面小组件同时显示进行中的长任务和时间待定待办。继续以统一Agent为核心：主界面固定“问日栖”，文字/语音创建安排和笔记，通知总结与课表截图共用同一套工具调用。短信并入通知收集，可选全部内容、应用、已发现群聊和正则。资料生成日程必须先人工核验，课表保留校正表格。移除厂商助手授权、开放HTTP接口与重复AI操作页。
+1.3.1加入可选[软件功能热更新](docs/功能热更新.md)，支持GitHub或登录服务端获取签名原生模块、账号限流与回退。并合并了更新下载与安装恢复、助手图片输入与Markdown消息显示、闹钟提醒改进；今日清单与桌面小组件同时显示进行中的长任务和时间待定待办。继续以统一Agent为核心：主界面固定“问日栖”，文字/语音创建安排和笔记，通知总结与课表截图共用同一套工具调用。短信并入通知收集，可选全部内容、应用、已发现群聊和正则。资料生成日程必须先人工核验，课表保留校正表格。移除厂商助手授权、开放HTTP接口与重复AI操作页。
 
 完整Markdown、黄历、Agent助手均为可选APK，安装后直接从日栖调用：[Markdown](https://github.com/cniv14/DayFlow/releases/download/v1.3.1/DayFlow-markdown.apk) / [黄历](https://github.com/cniv14/DayFlow/releases/download/v1.3.1/DayFlow-almanac.apk) / [Agent助手](https://github.com/cniv14/DayFlow/releases/download/v1.3.1/DayFlow-assistant.apk)。本体保留基础Markdown查看/编辑、农历、日程与同步；安装Markdown插件后自动进入完整编辑并返回当前笔记。笔记不再设置固定字数/大小配额，服务端稳定契约见[说明](docs/服务端稳定协议.md)。
 

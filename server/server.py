@@ -78,6 +78,22 @@ class Store:
                 raise ApiError(429, "尝试次数过多，请15分钟后再试")
             db.execute("INSERT INTO attempts VALUES(?,?,1) ON CONFLICT(key) DO UPDATE SET count=count+1", (key, now))
 
+    def runtime_limit(self, user_id):
+        # Account-wide, persistent quota shared by all sessions/devices and restarts.
+        now = int(time.time())
+        window = max(60, int(os.getenv('DAYFLOW_RUNTIME_WINDOW_SECONDS', '3600')))
+        maximum = max(1, int(os.getenv('DAYFLOW_RUNTIME_REQUESTS', '10')))
+        with self.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            db.execute('CREATE TABLE IF NOT EXISTS runtime_requests(user_id TEXT PRIMARY KEY, start INTEGER NOT NULL, count INTEGER NOT NULL)')
+            db.execute('DELETE FROM runtime_requests WHERE start<=?', (now-window,))
+            row = db.execute('SELECT start,count FROM runtime_requests WHERE user_id=?', (user_id,)).fetchone()
+            if row and row['count'] >= maximum:
+                error = ApiError(429, '热更新请求过多，请稍后再试')
+                error.retry_after = max(1, row['start'] + window - now)
+                raise error
+            db.execute('INSERT INTO runtime_requests VALUES(?,?,1) ON CONFLICT(user_id) DO UPDATE SET count=count+1', (user_id, now))
+
     @staticmethod
     def password_hash(password, salt):
         return hashlib.scrypt(password.encode(), salt=bytes.fromhex(salt), n=16384, r=8, p=1).hex()
@@ -249,11 +265,13 @@ class Handler(BaseHTTPRequestHandler):
         # No request URLs, content, credentials or tokens in access logs.
         pass
 
-    def respond(self, status, body):
+    def respond(self, status, body, retry_after=None):
         data = json.dumps(body, ensure_ascii=False).encode()
         self.send_response(status)
         self.send_header('Content-Type', 'application/json; charset=utf-8')
         self.send_header('Content-Length', str(len(data)))
+        if retry_after is not None:
+            self.send_header('Retry-After', str(retry_after))
         self.send_header('Cache-Control', 'no-store')
         self.send_header('X-Content-Type-Options', 'nosniff')
         self.end_headers()
@@ -309,12 +327,29 @@ class Handler(BaseHTTPRequestHandler):
                 if not isinstance(body, dict):
                     raise ApiError(400, '请求体必须为对象')
             if path == '/health' and not post:
-                result = {'ok': True, 'protocol': 1, 'service': 'dayflow', 'capabilities': ['types', 'recurrence', 'opaque_fields', 'large_records', 'cas'], 'version': '1.2.0', 'limits': {'sync_body_bytes': MAX_SYNC_BODY, 'record_bytes': 0, 'mutations_per_batch': 100, 'changes_per_page': 200}}
+                result = {'ok': True, 'protocol': 1, 'service': 'dayflow', 'capabilities': ['types', 'recurrence', 'opaque_fields', 'large_records', 'cas', 'runtime_modules_v1'], 'version': '1.2.0', 'limits': {'sync_body_bytes': MAX_SYNC_BODY, 'record_bytes': 0, 'mutations_per_batch': 100, 'changes_per_page': 200}}
             elif path in ('/v1/auth/register', '/v1/auth/login') and post:
                 store.limit('auth:' + self.client_address[0])
                 result = store.auth(body, path.endswith('register'))
             elif path == '/v1/sync' and post:
                 result = store.sync(sync_user, body)
+            elif path == '/v1/runtime-update' and not post:
+                user = self.user()
+                store.runtime_limit(user['user_id'])
+                folder = Path(os.getenv('DAYFLOW_UPDATES_DIR', 'updates')).resolve()
+                file = folder / 'runtime-update.json'
+                if file.is_symlink() or not file.is_file() or file.resolve().parent != folder:
+                    raise ApiError(404, '尚未发布功能热更新包')
+                with file.open('rb') as incoming:
+                    raw = incoming.read(12 * 1024 * 1024 + 1)
+                if len(raw) > 12 * 1024 * 1024:
+                    raise ApiError(503, '热更新包超过客户端支持范围')
+                try:
+                    result = json.loads(raw)
+                except (ValueError, UnicodeError):
+                    raise ApiError(503, '热更新包格式错误')
+                if not isinstance(result, dict) or not isinstance(result.get('payload'), str) or not isinstance(result.get('signature'), str):
+                    raise ApiError(503, '热更新包格式错误')
             elif path == '/v1/me' and not post:
                 user = self.user()
                 with store.connect() as db:
@@ -328,7 +363,7 @@ class Handler(BaseHTTPRequestHandler):
                 raise ApiError(404, '接口不存在')
             self.respond(200, result)
         except ApiError as error:
-            self.respond(error.status, {'error': error.message})
+            self.respond(error.status, {'error': error.message}, getattr(error, 'retry_after', None))
         except (BrokenPipeError, ConnectionResetError, TimeoutError):
             pass
         except Exception:
