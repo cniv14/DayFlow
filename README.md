@@ -4,13 +4,13 @@
 
 **不注册、不联网、不部署服务器，也能使用本地核心功能。** AI、天气、同步和更新检查均为可选联网能力。
 
-**当前 Android： [1.3.0 APK](https://github.com/cniv14/DayFlow/releases/download/v1.3.0/DayFlow-android.apk)** · [发布页](https://github.com/cniv14/DayFlow/releases/tag/v1.3.0) · [使用说明](docs/Android-1.3.0.md)
+**当前 Android： [1.3.1 APK](https://github.com/cniv14/DayFlow/releases/download/v1.3.1/DayFlow-android.apk)** · [发布页](https://github.com/cniv14/DayFlow/releases/tag/v1.3.1) · [使用说明](docs/Android-1.3.1.md)
 
-1.3.0以统一Agent为核心：主界面固定“问日栖”，文字/语音创建安排和笔记，通知总结与课表截图共用同一套工具调用。短信并入通知收集，可选全部内容、应用、已发现群聊和正则。资料生成日程必须先人工核验，课表保留校正表格。移除厂商助手授权、开放HTTP接口与重复AI操作页。
+1.3.1合并了更新下载与安装恢复、助手图片输入与Markdown消息显示、闹钟提醒改进；今日清单与桌面小组件同时显示进行中的长任务和时间待定待办。继续以统一Agent为核心：主界面固定“问日栖”，文字/语音创建安排和笔记，通知总结与课表截图共用同一套工具调用。短信并入通知收集，可选全部内容、应用、已发现群聊和正则。资料生成日程必须先人工核验，课表保留校正表格。移除厂商助手授权、开放HTTP接口与重复AI操作页。
 
-完整Markdown、黄历、Agent助手均为可选APK，安装后直接从日栖调用：[Markdown](https://github.com/cniv14/DayFlow/releases/download/v1.3.0/DayFlow-markdown.apk) / [黄历](https://github.com/cniv14/DayFlow/releases/download/v1.3.0/DayFlow-almanac.apk) / [Agent助手](https://github.com/cniv14/DayFlow/releases/download/v1.3.0/DayFlow-assistant.apk)。本体保留基础Markdown查看/编辑、农历、日程与同步；安装Markdown插件后自动进入完整编辑并返回当前笔记。笔记不再设置固定字数/大小配额，服务端稳定契约见[说明](docs/服务端稳定协议.md)。
+完整Markdown、黄历、Agent助手均为可选APK，安装后直接从日栖调用：[Markdown](https://github.com/cniv14/DayFlow/releases/download/v1.3.1/DayFlow-markdown.apk) / [黄历](https://github.com/cniv14/DayFlow/releases/download/v1.3.1/DayFlow-almanac.apk) / [Agent助手](https://github.com/cniv14/DayFlow/releases/download/v1.3.1/DayFlow-assistant.apk)。本体保留基础Markdown查看/编辑、农历、日程与同步；安装Markdown插件后自动进入完整编辑并返回当前笔记。笔记不再设置固定字数/大小配额，服务端稳定契约见[说明](docs/服务端稳定协议.md)。
 
-可选离线OCR独立安装：[arm64](https://github.com/cniv14/DayFlow/releases/download/v1.3.0/DayFlow-ocr-arm64.apk) / [armv7](https://github.com/cniv14/DayFlow/releases/download/v1.3.0/DayFlow-ocr-armv7.apk)，通常现代手机选arm64。无需OCR时只安装主包。见[插件API](docs/插件API.md)与[同步API](docs/客户端同步API.md)。
+可选离线OCR独立安装：[arm64](https://github.com/cniv14/DayFlow/releases/download/v1.3.1/DayFlow-ocr-arm64.apk) / [armv7](https://github.com/cniv14/DayFlow/releases/download/v1.3.1/DayFlow-ocr-armv7.apk)，通常现代手机选arm64。无需OCR时只安装主包。见[插件API](docs/插件API.md)与[同步API](docs/客户端同步API.md)。
 
 按要求已依次提供0.5.0、1.0.0和1.1.0三个发布阶段：任务管理补齐、连接现有TaskFlow Windows、操作与资源完善。Windows源码不修改。所有新版均只编译打包，实际连接与交互由用户实测。
 

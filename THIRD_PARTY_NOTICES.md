@@ -4,7 +4,7 @@
 
 DayFlow's original source code is licensed under MIT. Dependency licenses remain applicable to those dependencies.
 
-Android 1.2.0 core and optional plugins use the following components; Markdown/Markwon/JLaTeXMath are distributed in the optional Markdown and assistant APKs, not the core APK:
+The Android core and optional plugins use the following components. The core and assistant APKs include basic Markwon rendering; the optional Markdown APK includes the full editor and JLaTeXMath formula dependencies.
 
 - Markwon ext-latex and inline-parser 4.6.2, Apache License 2.0, https://github.com/noties/Markwon — native Markdown formula integration.
 - JLaTeXMath Android 0.2.0, upstream tag `v0.2.0`, commit `cc2a83dcf695028b5588f91a90734d94eb5bd02b`, https://github.com/noties/jlatexmath-android — GNU GPL v2 or later with the upstream special linking exception for independent modules. This component retains its own license; DayFlow's original independent source remains MIT. The unmodified corresponding upstream source, including build files, fonts and licenses, is distributed alongside the APK as `MathRenderer-source.zip`. GPL text, linking exception and font licenses are included in the APK under `licenses/jlatexmath/`. The fonts retain their original OFL, Knuth, free/public-domain or GPL terms as described in that directory and the corresponding source archive.
